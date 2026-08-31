@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile for farmers, bulk corporate buyers, and individual buyers.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["farmer", "organisation", "individual"] },
+        "orgName": { "type": "string" },
+        "farmName": { "type": "string" },
+        "location": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "avatarUrl": { "type": "string" },
+        "phone": { "type": "string" },
+        "rating": { "type": "number" },
+        "totalDeals": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "role", "location", "verified"]
+    },
+    "OrderTransaction": {
+      "title": "OrderTransaction",
+      "description": "B2B agriculture crop order transaction with escrow, tracking, and delivery details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "listingId": { "type": "string" },
+        "cropName": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "buyerRole": { "type": "string" },
+        "quantityTons": { "type": "number" },
+        "pricePerTon": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string" },
+        "logisticsPartner": { "type": "string" },
+        "destination": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "utrReference": { "type": "string" },
+        "trackingNumber": { "type": "string" },
+        "driverName": { "type": "string" },
+        "driverPhone": { "type": "string" },
+        "truckNumber": { "type": "string" },
+        "eWayBillNumber": { "type": "string" },
+        "estimatedDeliveryDate": { "type": "string" },
+        "currentCheckpoint": { "type": "string" }
+      },
+      "required": ["id", "cropName", "sellerId", "buyerId", "quantityTons", "pricePerTon", "totalAmount", "status", "timestamp"]
+    },
+    "UserComplaint": {
+      "title": "UserComplaint",
+      "description": "Grievance, dispute and complaint ticket filed by farmers, FPOs, bulk buyers or users stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ticketNumber": { "type": "string" },
+        "userName": { "type": "string" },
+        "userContact": { "type": "string" },
+        "issueCategory": { "type": "string", "enum": ["Payment & Escrow", "Quality Discrepancy", "Delivery & Logistics", "Weighbridge & Quantity", "Account & KYC", "Other"] },
+        "orderId": { "type": "string" },
+        "subject": { "type": "string" },
+        "description": { "type": "string" },
+        "priority": { "type": "string", "enum": ["Low", "Medium", "High", "Urgent"] },
+        "status": { "type": "string", "enum": ["Registered", "Under Investigation", "Resolved"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "ticketNumber", "userName", "userContact", "issueCategory", "subject", "description", "priority", "status", "createdAt"]
+    }
+  }
+}

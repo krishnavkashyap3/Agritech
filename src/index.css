@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #FAF9F6;
+    color: #1C1C1C;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .font-serif-artistic {
+    font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+  }
+}
+
+.font-serif {
+  font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+}
+
+.font-sans {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.font-mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* Subtle parchment grain backdrop */
+.bg-parchment {
+  background-color: #FAF9F6;
+}
+
+.bg-parchment-card {
+  background-color: #FFFFFF;
+}
+
+.border-warm {
+  border-color: #E8E5DF;
+}
+
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  
+  nav, footer, .no-print, #checkout-modal-backdrop > div:not(#printable-invoice-container) {
+    display: none !important;
+  }
+
+  #checkout-modal-backdrop {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  #checkout-modal-card {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
+

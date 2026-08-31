@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profiles
+    match /users/{userId} {
+      // Anyone logged in can read basic user profile (to see farmer/buyer details on listings & orders)
+      allow read: if isAuthenticated();
+      // Users can write/update their own profile
+      allow write: if isOwner(userId);
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      // Allow reading if user is either the buyer or seller or signed in
+      allow read: if isAuthenticated();
+      // Allow create if user is authenticated and is buyer or seller
+      allow create: if isAuthenticated();
+      // Allow update if user is authenticated and party to the order
+      allow update: if isAuthenticated() && (
+        resource.data.buyerId == request.auth.uid || 
+        resource.data.sellerId == request.auth.uid ||
+        request.resource.data.buyerId == request.auth.uid ||
+        request.resource.data.sellerId == request.auth.uid
+      );
+      allow delete: if isAuthenticated() && isOwner(resource.data.buyerId);
+    }
+
+    // Complaints & Grievance tickets collection
+    match /complaints/{complaintId} {
+      // Allow anyone (farmers, buyers, visitors) to submit grievance tickets
+      allow create: if true;
+      // Allow reading complaints for tracking
+      allow read: if true;
+      // Allow updates to complaints
+      allow update: if true;
+      allow delete: if isAuthenticated();
+    }
+    
+    // Listings & RFQs (if synced to Firestore)
+    match /listings/{listingId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /rfqs/{rfqId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+  }
+}

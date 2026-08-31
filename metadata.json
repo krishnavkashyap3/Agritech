@@ -1,0 +1,6 @@
+{
+  "name": "Agritech Bharat",
+  "description": "Direct Indian agricultural commodity marketplace connecting Kisans & FPOs with bulk millers and enterprise buyers, featuring APMC mandi pricing, e-NAM escrow protection, and AI crop planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
