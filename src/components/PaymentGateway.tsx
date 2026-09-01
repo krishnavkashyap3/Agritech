@@ -103,7 +103,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
   const grandTotal = rawCropSubtotal + netLogisticsFee + escrowInspectionFee;
 
   const virtualAccount = {
-    beneficiaryName: 'Agritech Bharat Escrow Trust A/C',
+    beneficiaryName: 'KrishiQuant Escrow Trust A/C',
     accountNumber: `AGRI${Math.floor(1000000000 + Math.random() * 9000000000)}`,
     ifsc: 'SBIN0001234',
     bankName: 'State Bank of India (B2B Clearing Division)',
@@ -158,7 +158,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
               pricePerTon: item.customPricePerTon,
               totalAmount: itemTotal,
               status: 'Escrow Locked',
-              logisticsPartner: item.logisticsChoice === 'agridirect_freight' ? 'Agritech Bharat Intermodal Logistics' : item.logisticsChoice === 'farmer_delivery' ? 'Farmer Mandi Transport' : 'Buyer Dedicated Truck',
+              logisticsPartner: item.logisticsChoice === 'agridirect_freight' ? 'KrishiQuant Intermodal Logistics' : item.logisticsChoice === 'farmer_delivery' ? 'Farmer Mandi Transport' : 'Buyer Dedicated Truck',
               destination: destinationAddress || 'Vashi Mandi Central Processing Hub, Navi Mumbai',
               timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
               paymentMethod: selectedChannel,
@@ -203,7 +203,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
               <span>e-NAM & Reserve Bank Approved B2B Escrow Gateway</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-white">
-              Agritech Bharat Payment Gateway
+              KrishiQuant Payment Gateway
             </h2>
             <p className="text-[#D0C8BB] text-xs mt-0.5">
               Multi-channel wholesale settlement for agricultural commodities • 100% Escrow Protection
@@ -235,7 +235,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
               Escrow Funds Successfully Locked!
             </h3>
             <p className="text-xs sm:text-sm text-[#5C554B] max-w-xl mx-auto leading-relaxed">
-              Your payment of <strong className="text-[#233B2B] font-mono">₹{grandTotal.toLocaleString('en-IN')}</strong> is secured in the <strong>Agritech Bharat Escrow Trust Account</strong>. The seller farmers/FPOs have received verified dispatch instructions.
+              Your payment of <strong className="text-[#233B2B] font-mono">₹{grandTotal.toLocaleString('en-IN')}</strong> is secured in the <strong>KrishiQuant Escrow Trust Account</strong>. The seller farmers/FPOs have received verified dispatch instructions.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
               <span className="bg-white border border-[#C6DFC9] px-3 py-1 rounded-full text-xs font-mono text-[#233B2B] font-bold">
@@ -252,7 +252,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
             <div className="flex flex-wrap justify-between items-start pb-4 border-b border-[#E8E5DF] gap-4">
               <div>
                 <span className="text-xs font-bold text-[#233B2B] uppercase tracking-wider font-serif">
-                  AGRITECH BHARAT COMMODITY EXCHANGE
+                  KRISHIQUANT COMMODITY EXCHANGE
                 </span>
                 <h4 className="text-lg font-serif font-bold text-[#1C1C1C]">e-Mandi Tax Invoice & Sauda Slip</h4>
                 <div className="text-xs text-[#7A746B] mt-1 space-y-0.5">
@@ -601,7 +601,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
                       </svg>
                     </div>
                     <div className="text-[11px] font-mono font-semibold text-[#2D4F38]">
-                      UPI ID: agritech.escrow@icici
+                      UPI ID: krishiquant.escrow@icici
                     </div>
                     <p className="text-[10px] text-[#7A746B]">
                       Scan using Google Pay, PhonePe, BHIM or Paytm
@@ -975,7 +975,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
                 <span>Modify Procurement Items</span>
               </button>
               <span className="text-[#8A847A] text-[11px]">
-                Secured by Agritech Bharat Escrow Trust
+                Secured by KrishiQuant Escrow Trust
               </span>
             </div>
           </div>

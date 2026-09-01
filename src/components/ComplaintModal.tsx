@@ -105,7 +105,7 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
 
           <div className="flex items-center space-x-2 text-amber-200 text-xs font-semibold uppercase tracking-wider mb-1 font-serif">
             <ShieldAlert className="w-4 h-4 text-amber-300" />
-            <span>Agritech Bharat Grievance & Dispute Redressal</span>
+            <span>KrishiQuant Grievance & Dispute Redressal</span>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -171,7 +171,7 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
                     Ticket Reference #{generatedTicket.ticketNumber}
                   </h3>
                   <p className="text-xs text-[#5C554B] max-w-md mx-auto">
-                    Your complaint has been logged and securely recorded in Firebase Firestore under the Agritech Bharat dispute resolution desk. Our procurement arbitration team will review within 24 business hours.
+                    Your complaint has been logged and securely recorded in Firebase Firestore under the KrishiQuant dispute resolution desk. Our procurement arbitration team will review within 24 business hours.
                   </p>
                 </div>
 

@@ -96,7 +96,7 @@ export const CreateListingModal: React.FC<CreateListingModalProps> = ({
             List Bulk Harvest Lot for Millers & Enterprise Buyers
           </h2>
           <p className="text-[#D0C8BB] text-xs mt-0.5">
-            Post directly to the live Agritech Bharat mandi marketplace with e-NAM escrow protection.
+            Post directly to the live KrishiQuant mandi marketplace with e-NAM escrow protection.
           </p>
         </div>
 

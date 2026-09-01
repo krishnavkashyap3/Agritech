@@ -9,7 +9,8 @@ import {
   DeliveryLogisticsConfig,
   ComplianceDetails
 } from '../types';
-import { DEFAULT_SAVED_ADDRESSES } from '../data/mockData';
+import { DEFAULT_SAVED_ADDRESSES, INITIAL_TRANSACTIONS } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 import { PaymentGateway } from './PaymentGateway';
 import { DeliveryAddressModal } from './DeliveryAddressModal';
 import { OrderTrackingModal } from './OrderTrackingModal';
@@ -43,7 +44,8 @@ import {
   ArrowLeft,
   Navigation,
   ExternalLink,
-  Printer
+  Printer,
+  Radio
 } from 'lucide-react';
 
 interface BuyingSectionProps {
@@ -52,6 +54,7 @@ interface BuyingSectionProps {
   onOpenNegotiator: (listing: CropListing) => void;
   onOrderComplete: (transactions: OrderTransaction[]) => void;
   onSwitchToDashboard: () => void;
+  onRequireAuth?: (action?: () => void, promptMessage?: string) => void;
 }
 
 const CATEGORIES: { label: string; value: 'All' | CropCategory }[] = [
@@ -69,7 +72,10 @@ export const BuyingSection: React.FC<BuyingSectionProps> = ({
   onOpenNegotiator,
   onOrderComplete,
   onSwitchToDashboard,
+  onRequireAuth,
 }) => {
+  const { isAuthenticated } = useAuth();
+
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<'All' | CropCategory>('All');
@@ -172,16 +178,25 @@ export const BuyingSection: React.FC<BuyingSectionProps> = ({
   const handleInstantBuy = (listing: CropListing) => {
     const qty = getQty(listing);
 
-    setCartItems([
-      {
-        listing,
-        quantityTons: qty,
-        customPricePerTon: listing.pricePerTon,
-        logisticsChoice: 'agridirect_freight',
-      },
-    ]);
-    setIsCheckoutActive(true);
-    setCheckoutStep(1);
+    const proceed = () => {
+      setCartItems([
+        {
+          listing,
+          quantityTons: qty,
+          customPricePerTon: listing.pricePerTon,
+          logisticsChoice: 'agridirect_freight',
+        },
+      ]);
+      setIsCheckoutActive(true);
+      setCheckoutStep(1);
+    };
+
+    if (!isAuthenticated) {
+      onRequireAuth?.(proceed, `Please sign in or create an account to procure "${listing.cropName}" and execute e-NAM escrow payment.`);
+      return;
+    }
+
+    proceed();
   };
 
   const handleUpdateCartQty = (listingId: string, newQty: number) => {
@@ -283,10 +298,16 @@ export const BuyingSection: React.FC<BuyingSectionProps> = ({
               <MapPin className="w-4 h-4 text-emerald-400" />
               <span className="text-white font-medium">Pan-India Delivery to Silos & Godowns</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-[#1B2F22] px-3 py-1.5 rounded-lg border border-[#3A5741]">
-              <Truck className="w-4 h-4 text-amber-300" />
+            <button
+              type="button"
+              id="live-gps-tracking-banner-btn"
+              onClick={() => setTrackingModalTransaction(lastCompletedOrders[0] || INITIAL_TRANSACTIONS[0])}
+              className="flex items-center gap-1.5 bg-[#1B2F22] hover:bg-[#253F2E] px-3 py-1.5 rounded-lg border border-[#3A5741] text-left transition cursor-pointer text-xs group"
+            >
+              <Radio className="w-4 h-4 text-amber-300 animate-pulse" />
               <span className="text-white font-medium">Live GPS Freight Tracking</span>
-            </div>
+              <ArrowRight className="w-3 h-3 text-amber-200 group-hover:translate-x-0.5 transition" />
+            </button>
             <div className="flex items-center gap-1.5 bg-[#1B2F22] px-3 py-1.5 rounded-lg border border-[#3A5741]">
               <ShieldCheck className="w-4 h-4 text-amber-200" />
               <span className="text-white font-medium">100% Escrow Vault Settlement</span>
@@ -687,7 +708,7 @@ export const BuyingSection: React.FC<BuyingSectionProps> = ({
                             Include On-Site Hamali / Labor Gang Unloading (₹120/MT • Total ₹{hamaliFee.toLocaleString('en-IN')})
                           </strong>
                           <span className="text-[#5C554B] text-[11px]">
-                            Agritech Bharat coordinates experienced mandi hamalis for manual stacking into your godown.
+                            KrishiQuant coordinates experienced mandi hamalis for manual stacking into your godown.
                           </span>
                         </div>
                       </label>
@@ -845,6 +866,32 @@ export const BuyingSection: React.FC<BuyingSectionProps> = ({
                     </div>
                   </div>
 
+                  {/* Sign-in Gate Notice if Unauthenticated */}
+                  {!isAuthenticated && (
+                    <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-amber-950 text-xs sm:text-sm">
+                            Buyer Sign-In Required Before Order Placement
+                          </h4>
+                          <p className="text-[11px] text-amber-800">
+                            To comply with e-NAM APMC regulations and release bank escrow tokens, please sign in or register before finalizing this transaction.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onRequireAuth?.(() => setCheckoutStep(4), 'Please sign in or create an account to finalize your order & lock escrow payment.')}
+                        className="px-4 py-2 bg-[#233B2B] hover:bg-[#1B2F22] text-amber-200 rounded-xl text-xs font-bold transition shadow-xs whitespace-nowrap"
+                      >
+                        Sign In / Register Now
+                      </button>
+                    </div>
+                  )}
+
                   {/* Buttons */}
                   <div className="pt-4 border-t border-[#E8E5DF] flex justify-between">
                     <button
@@ -857,10 +904,19 @@ export const BuyingSection: React.FC<BuyingSectionProps> = ({
                     <button
                       type="button"
                       id="proceed-step4-btn"
-                      onClick={() => setCheckoutStep(4)}
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          onRequireAuth?.(
+                            () => setCheckoutStep(4), 
+                            'Please sign in or register before placing orders and executing escrow contracts.'
+                          );
+                          return;
+                        }
+                        setCheckoutStep(4);
+                      }}
                       className="px-6 py-2.5 bg-[#C2593F] hover:bg-[#A84A33] text-white font-semibold rounded-xl text-xs transition flex items-center gap-2 shadow-xs border border-[#D97259]"
                     >
-                      <span>Proceed to Payment Gateway</span>
+                      <span>{isAuthenticated ? 'Proceed to Payment Gateway' : 'Sign In to Proceed to Payment'}</span>
                       <CreditCard className="w-4 h-4" />
                     </button>
                   </div>
@@ -912,7 +968,7 @@ export const BuyingSection: React.FC<BuyingSectionProps> = ({
                     Procurement Order Placed Successfully!
                   </h2>
                   <p className="text-xs sm:text-sm text-[#5C554B] max-w-xl mx-auto mt-2 leading-relaxed">
-                    Your payment of <strong>₹{cartGrandTotal.toLocaleString('en-IN')}</strong> is safely locked in the <strong>Agritech Bharat Escrow Trust Account</strong>. The seller FPOs and dedicated intermodal carriers have received automated dispatch clearance.
+                    Your payment of <strong>₹{cartGrandTotal.toLocaleString('en-IN')}</strong> is safely locked in the <strong>KrishiQuant Escrow Trust Account</strong>. The seller FPOs and dedicated intermodal carriers have received automated dispatch clearance.
                   </p>
                 </div>
 
@@ -1382,6 +1438,13 @@ export const BuyingSection: React.FC<BuyingSectionProps> = ({
                     type="button"
                     id="proceed-checkout-stepper-btn"
                     onClick={() => {
+                      if (!isAuthenticated) {
+                        onRequireAuth?.(() => {
+                          setIsCheckoutActive(true);
+                          setCheckoutStep(1);
+                        }, 'Please sign in or create an account to start your bulk procurement checkout.');
+                        return;
+                      }
                       setIsCheckoutActive(true);
                       setCheckoutStep(1);
                     }}

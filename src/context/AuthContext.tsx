@@ -39,23 +39,26 @@ function removeUndefinedFields<T extends Record<string, any>>(obj: T): Partial<T
   return result;
 }
 
-interface PhoneOtpSession {
-  phoneNumber: string;
-  otpCode: string;
-  expiresAt: number;
-}
+export const GUEST_USER: UserProfile = {
+  id: '',
+  name: '',
+  email: '',
+  role: 'organisation',
+  location: '',
+  verified: false,
+  rating: 0,
+  totalDeals: 0,
+};
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   currentUser: UserProfile;
   setCurrentUser: React.Dispatch<React.SetStateAction<UserProfile>>;
+  isAuthenticated: boolean;
   loading: boolean;
   isFirebaseConnected: boolean;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   signUpWithEmail: (email: string, pass: string, name: string, role: UserRole, location: string, orgOrFarmName?: string, phone?: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-  sendPhoneOtp: (phoneNumber: string) => Promise<{ success: boolean; otp: string }>;
-  verifyPhoneOtpAndSignIn: (phoneNumber: string, otp: string, registrationData?: { name?: string; role?: UserRole; location?: string; orgOrFarmName?: string }) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logOut: () => Promise<void>;
   saveUserProfile: (profile: Partial<UserProfile>) => Promise<void>;
@@ -69,12 +72,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  // Default to Demo User (e.g. farmer1 or org1) if not logged in
-  const [currentUser, setCurrentUser] = useState<UserProfile>(DEMO_USERS.farmer1);
+  
+  // Clean default guest user when not signed in (no random Patil Krishi profile)
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+    try {
+      const savedUser = localStorage.getItem('agritech_current_user');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && parsed.id) return parsed;
+      }
+    } catch {}
+    return GUEST_USER;
+  });
+
   const [loading, setLoading] = useState<boolean>(true);
   const [firestoreOrders, setFirestoreOrders] = useState<OrderTransaction[]>([]);
   const [firestoreComplaints, setFirestoreComplaints] = useState<UserComplaint[]>([]);
-  const [activeOtpSession, setActiveOtpSession] = useState<PhoneOtpSession | null>(null);
+
+  const isAuthenticated = Boolean(
+    firebaseUser !== null ||
+    (currentUser.id && currentUser.id.length > 0 && currentUser.email && currentUser.email.length > 0)
+  );
 
   // Listen to Firebase Auth state
   useEffect(() => {
@@ -97,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // If new user or profile doesn't exist yet, create default
             const initialProfile: UserProfile = {
               id: user.uid,
-              name: user.displayName || user.email?.split('@')[0] || 'Agritech Bharat Member',
+              name: user.displayName || user.email?.split('@')[0] || 'KrishiQuant Member',
               email: user.email || '',
               role: 'farmer',
               farmName: 'My Agro Farm & FPO',
@@ -183,13 +201,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signInWithEmail = async (email: string, pass: string) => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-    const user = userCredential.user;
-    // Load doc
-    const userDocRef = doc(db, 'users', user.uid);
-    const snap = await getDoc(userDocRef);
-    if (snap.exists()) {
-      setCurrentUser(snap.data() as UserProfile);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+      const user = userCredential.user;
+      // Load doc
+      const userDocRef = doc(db, 'users', user.uid);
+      const snap = await getDoc(userDocRef);
+      if (snap.exists()) {
+        setCurrentUser(snap.data() as UserProfile);
+      }
+    } catch (err: any) {
+      console.warn('Firebase Email Sign-In issue:', err?.code || err?.message);
+      // Check if user was registered locally or in demo storage
+      const savedUserStr = localStorage.getItem('agritech_current_user');
+      if (savedUserStr) {
+        try {
+          const savedUser = JSON.parse(savedUserStr);
+          if (savedUser.email?.toLowerCase() === email.toLowerCase()) {
+            setCurrentUser(savedUser);
+            return;
+          }
+        } catch {}
+      }
+      throw err;
     }
   };
 
@@ -202,166 +236,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     orgOrFarmName?: string, 
     phone?: string
   ) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    const user = userCredential.user;
-    await updateProfile(user, { displayName: name });
-
-    const newProfile: UserProfile = {
-      id: user.uid,
-      name,
-      email,
-      role,
-      ...(role === 'farmer' 
-        ? { farmName: orgOrFarmName?.trim() || `${name}'s Farm & FPO` } 
-        : { orgName: orgOrFarmName?.trim() || `${name} Agri Corp` }),
-      location: location || 'Pune Agro Belt, Maharashtra',
-      phone: phone || '+91 98000 00000',
-      verified: true,
-      rating: 5.0,
-      totalDeals: 0,
-      avatarUrl: role === 'farmer' 
-        ? 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    };
-
-    // Save to Firestore without any undefined properties
-    await setDoc(doc(db, 'users', user.uid), removeUndefinedFields(newProfile), { merge: true });
-    setCurrentUser(newProfile);
-  };
-
-  const signInWithGoogle = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      const user = userCredential.user;
+      await updateProfile(user, { displayName: name });
 
-      const userDocRef = doc(db, 'users', user.uid);
-      const snap = await getDoc(userDocRef);
+      const newProfile: UserProfile = {
+        id: user.uid,
+        name,
+        email,
+        role,
+        ...(role === 'farmer' 
+          ? { farmName: orgOrFarmName?.trim() || `${name}'s Farm & FPO` } 
+          : { orgName: orgOrFarmName?.trim() || `${name} Agri Corp` }),
+        location: location || 'Pune Agro Belt, Maharashtra',
+        phone: phone || '+91 98000 00000',
+        verified: true,
+        rating: 5.0,
+        totalDeals: 0,
+        avatarUrl: role === 'farmer' 
+          ? 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80'
+          : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      };
 
-      if (snap.exists()) {
-        const data = snap.data() as UserProfile;
-        setCurrentUser({
-          ...data,
-          id: user.uid,
-          email: user.email || data.email,
-        });
-      } else {
-        const newProfile: UserProfile = {
-          id: user.uid,
-          name: user.displayName || user.email?.split('@')[0] || 'Agritech Bharat Member',
-          email: user.email || 'user@agritech-bharat.in',
-          role: 'organisation', // Default to B2B Procurement Buyer or customizable
-          orgName: `${user.displayName || 'Google'} Procurement Enterprise`,
-          location: 'New Delhi / National Capital Mandi',
+      // Save to Firestore without any undefined properties
+      await setDoc(doc(db, 'users', user.uid), removeUndefinedFields(newProfile), { merge: true });
+      setCurrentUser(newProfile);
+    } catch (err: any) {
+      console.warn('Firebase Email Sign-Up issue:', err?.code || err?.message);
+      
+      // If Email provider is not enabled in Firebase Console (auth/operation-not-allowed)
+      if (err?.code === 'auth/operation-not-allowed' || err?.message?.includes('operation-not-allowed')) {
+        const localUserId = `user_${Date.now()}`;
+        const fallbackProfile: UserProfile = {
+          id: localUserId,
+          name,
+          email,
+          role,
+          ...(role === 'farmer' 
+            ? { farmName: orgOrFarmName?.trim() || `${name}'s Farm & FPO` } 
+            : { orgName: orgOrFarmName?.trim() || `${name} Agri Corp` }),
+          location: location || 'Pune Agro Belt, Maharashtra',
+          phone: phone || '+91 98000 00000',
           verified: true,
           rating: 5.0,
           totalDeals: 0,
-          avatarUrl: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          phone: user.phoneNumber || '+91 98110 54321',
-        };
-
-        await setDoc(userDocRef, removeUndefinedFields(newProfile), { merge: true });
-        setCurrentUser(newProfile);
-      }
-    } catch (err: any) {
-      console.error('Google Sign-In failed:', err);
-      throw err;
-    }
-  };
-
-  const sendPhoneOtp = async (phoneNumber: string): Promise<{ success: boolean; otp: string }> => {
-    const cleanNumber = phoneNumber.replace(/\s+/g, '');
-    if (cleanNumber.length < 10) {
-      throw new Error('Please enter a valid 10-digit mobile number.');
-    }
-
-    // Generate 6-digit OTP
-    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const session: PhoneOtpSession = {
-      phoneNumber: cleanNumber,
-      otpCode: generatedOtp,
-      expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
-    };
-
-    setActiveOtpSession(session);
-    return { success: true, otp: generatedOtp };
-  };
-
-  const verifyPhoneOtpAndSignIn = async (
-    phoneNumber: string, 
-    otp: string,
-    registrationData?: { name?: string; role?: UserRole; location?: string; orgOrFarmName?: string }
-  ) => {
-    const cleanNumber = phoneNumber.replace(/\s+/g, '');
-    const cleanOtp = otp.trim();
-
-    // Verify OTP against active session or demo master code
-    const isMasterOtp = cleanOtp === '123456' || cleanOtp === '654321';
-    const isSessionValid = activeOtpSession && 
-      activeOtpSession.phoneNumber === cleanNumber && 
-      activeOtpSession.otpCode === cleanOtp && 
-      activeOtpSession.expiresAt > Date.now();
-
-    if (!isMasterOtp && !isSessionValid) {
-      throw new Error('Invalid or expired OTP code. Please enter the code sent to your phone or use test code 123456.');
-    }
-
-    // Generate deterministic ID for this phone number
-    const phoneUserId = `phone_${cleanNumber.replace(/[^0-9]/g, '').slice(-10)}`;
-    
-    try {
-      const userDocRef = doc(db, 'users', phoneUserId);
-      const snap = await getDoc(userDocRef);
-
-      if (snap.exists()) {
-        const existingData = snap.data() as UserProfile;
-        setCurrentUser({
-          ...existingData,
-          id: phoneUserId,
-        });
-      } else {
-        const role = registrationData?.role || 'farmer';
-        const name = registrationData?.name?.trim() || `Kisan (${cleanNumber.slice(-4)})`;
-        const location = registrationData?.location?.trim() || 'Indore Mandi Belt, MP';
-        
-        const newProfile: UserProfile = {
-          id: phoneUserId,
-          name,
-          email: `${phoneUserId}@kisan.agritechbharat.in`,
-          phone: cleanNumber.startsWith('+') ? cleanNumber : `+91 ${cleanNumber}`,
-          role,
-          ...(role === 'farmer' 
-            ? { farmName: registrationData?.orgOrFarmName?.trim() || `${name}'s FPO & Farm` } 
-            : { orgName: registrationData?.orgOrFarmName?.trim() || `${name} Commodities Ltd` }),
-          location,
-          verified: true,
-          rating: 4.9,
-          totalDeals: 1,
           avatarUrl: role === 'farmer' 
             ? 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80'
             : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
         };
 
-        await setDoc(userDocRef, removeUndefinedFields(newProfile), { merge: true });
-        setCurrentUser(newProfile);
+        try {
+          await setDoc(doc(db, 'users', localUserId), removeUndefinedFields(fallbackProfile), { merge: true });
+        } catch (dbErr) {
+          console.warn('Local profile save to Firestore fallback:', dbErr);
+        }
+        setCurrentUser(fallbackProfile);
+        try {
+          localStorage.setItem('agritech_current_user', JSON.stringify(fallbackProfile));
+        } catch {}
+        return;
       }
-    } catch (e) {
-      console.warn('Firestore phone profile save fallback to local state:', e);
-      const role = registrationData?.role || 'farmer';
-      const name = registrationData?.name?.trim() || `Kisan (${cleanNumber.slice(-4)})`;
-      const fallbackProfile: UserProfile = {
-        id: phoneUserId,
-        name,
-        email: `${phoneUserId}@kisan.agritechbharat.in`,
-        phone: cleanNumber.startsWith('+') ? cleanNumber : `+91 ${cleanNumber}`,
-        role,
-        farmName: `${name}'s FPO & Farm`,
-        location: registrationData?.location || 'Indore Mandi Belt, MP',
-        verified: true,
-        rating: 4.9,
-        totalDeals: 1,
-        avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80',
-      };
-      setCurrentUser(fallbackProfile);
+      throw err;
     }
   };
 
@@ -376,12 +312,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Firebase signout warning:', e);
     }
     setFirebaseUser(null);
-    setCurrentUser(DEMO_USERS.farmer1);
+    try {
+      localStorage.removeItem('agritech_current_user');
+      localStorage.removeItem('agritech_demo_auth');
+    } catch {}
+    setCurrentUser(GUEST_USER);
   };
 
   const saveUserProfile = async (profileUpdate: Partial<UserProfile>) => {
     const updated = { ...currentUser, ...profileUpdate };
     setCurrentUser(updated);
+    try {
+      localStorage.setItem('agritech_current_user', JSON.stringify(updated));
+    } catch {}
 
     if (firebaseUser) {
       try {
@@ -433,13 +376,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       firebaseUser,
       currentUser,
       setCurrentUser,
+      isAuthenticated,
       loading,
       isFirebaseConnected: true,
       signInWithEmail,
       signUpWithEmail,
-      signInWithGoogle,
-      sendPhoneOtp,
-      verifyPhoneOtpAndSignIn,
       resetPassword,
       logOut,
       saveUserProfile,

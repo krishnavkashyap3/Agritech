@@ -211,7 +211,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
               My Active RFQs / Bulk Demand Broadcasts
             </h2>
             <p className="text-xs text-[#7A746B] mt-0.5">
-              Demands visible to farmers & FPOs across the Agritech Bharat network.
+              Demands visible to farmers & FPOs across the KrishiQuant network.
             </p>
           </div>
           <button

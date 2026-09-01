@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { OrderTransaction } from '../types';
+import { LiveGpsMapTracker } from './LiveGpsMapTracker';
 import { 
   X, 
   Truck, 
@@ -18,13 +19,15 @@ import {
   Download,
   Printer,
   Sparkles,
-  Share2
+  Share2,
+  Radio
 } from 'lucide-react';
 
 interface OrderTrackingModalProps {
   isOpen: boolean;
   onClose: () => void;
   transaction: OrderTransaction | null;
+  initialTab?: 'gps' | 'tracking' | 'invoice' | 'ewaybill';
   onUpdateStatus?: (transactionId: string, newStatus: OrderTransaction['status']) => void;
 }
 
@@ -32,9 +35,10 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
   isOpen,
   onClose,
   transaction,
+  initialTab = 'gps',
   onUpdateStatus,
 }) => {
-  const [activeTab, setActiveTab] = useState<'tracking' | 'invoice' | 'ewaybill'>('tracking');
+  const [activeTab, setActiveTab] = useState<'gps' | 'tracking' | 'invoice' | 'ewaybill'>(initialTab);
   const [simulatedCopied, setSimulatedCopied] = useState<boolean>(false);
 
   if (!isOpen || !transaction) return null;
@@ -57,7 +61,7 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
       title: 'Order Confirmed & Escrow Locked',
       description: 'Payment authorized into 100% Reserve Bank e-NAM Escrow Vault.',
       time: transaction.timestamp,
-      location: 'Agritech Bharat Digital Exchange',
+      location: 'KrishiQuant Digital Exchange',
       completed: currentStep >= 1,
       current: currentStep === 1,
     },
@@ -91,7 +95,7 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
   ];
 
   const handleShareTracking = () => {
-    navigator.clipboard?.writeText(`Tracking link for Order #${transaction.id}: https://agritechbharat.in/track/${transaction.id}`);
+    navigator.clipboard?.writeText(`Tracking link for Order #${transaction.id}: https://krishiquant.in/track/${transaction.id}`);
     setSimulatedCopied(true);
     setTimeout(() => setSimulatedCopied(false), 2500);
   };
@@ -146,24 +150,36 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs (Tracking / Invoice / e-Way Bill) */}
-        <div className="flex border-b border-[#E8E5DF] bg-white px-6">
+        {/* Navigation Tabs (GPS Map / Timeline / Invoice / e-Way Bill) */}
+        <div className="flex border-b border-[#E8E5DF] bg-white px-4 sm:px-6 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('gps')}
+            className={`py-3 px-4 text-xs font-bold font-serif border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'gps'
+                ? 'border-[#233B2B] text-[#233B2B]'
+                : 'border-transparent text-[#7A746B] hover:text-[#1C1C1C]'
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+            <span>Live GPS Highway Map & Telemetry</span>
+          </button>
           <button
             type="button"
             onClick={() => setActiveTab('tracking')}
-            className={`py-3 px-4 text-xs font-bold font-serif border-b-2 transition flex items-center gap-1.5 ${
+            className={`py-3 px-4 text-xs font-bold font-serif border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'tracking'
                 ? 'border-[#233B2B] text-[#233B2B]'
                 : 'border-transparent text-[#7A746B] hover:text-[#1C1C1C]'
             }`}
           >
             <Navigation className="w-3.5 h-3.5" />
-            <span>Live Consignment Timeline</span>
+            <span>Mandi & Freight Timeline</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('ewaybill')}
-            className={`py-3 px-4 text-xs font-bold font-serif border-b-2 transition flex items-center gap-1.5 ${
+            className={`py-3 px-4 text-xs font-bold font-serif border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'ewaybill'
                 ? 'border-[#233B2B] text-[#233B2B]'
                 : 'border-transparent text-[#7A746B] hover:text-[#1C1C1C]'
@@ -175,19 +191,24 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('invoice')}
-            className={`py-3 px-4 text-xs font-bold font-serif border-b-2 transition flex items-center gap-1.5 ${
+            className={`py-3 px-4 text-xs font-bold font-serif border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'invoice'
                 ? 'border-[#233B2B] text-[#233B2B]'
                 : 'border-transparent text-[#7A746B] hover:text-[#1C1C1C]'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>GST Tax Invoice & Escrow Vault</span>
+            <span>GST Tax Invoice & Escrow</span>
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+          {/* Live GPS Map Tab */}
+          {activeTab === 'gps' && (
+            <LiveGpsMapTracker transaction={transaction} onClose={onClose} />
+          )}
+
           {activeTab === 'tracking' && (
             <div className="space-y-6">
               {/* Delivery ETA & Header Card */}
@@ -281,15 +302,20 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
                         Dedicated Transporter & Vehicle Info
                       </h4>
                       <span className="text-[10px] text-[#7A746B] block">
-                        {transaction.logisticsPartner || 'Agritech Bharat Intermodal Fleet'}
+                        {transaction.logisticsPartner || 'KrishiQuant Intermodal Fleet'}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 bg-[#EBF3ED] text-[#233B2B] px-2.5 py-1 rounded-lg text-xs font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                    <span>Live GPS Active</span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('gps')}
+                    className="flex items-center gap-1.5 bg-[#233B2B] hover:bg-[#1B2F22] text-amber-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-xs border border-[#3E5C47] transition group cursor-pointer"
+                  >
+                    <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                    <span>Open Live GPS Highway Map</span>
+                    <ArrowRight className="w-3 h-3 text-amber-300 group-hover:translate-x-0.5 transition" />
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
@@ -411,7 +437,7 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
             <div className="bg-white border border-[#D5CCBD] rounded-2xl p-6 space-y-5 text-xs shadow-xs">
               <div className="flex justify-between items-start border-b border-[#E8E5DF] pb-4">
                 <div>
-                  <span className="text-[10px] text-[#7A746B] uppercase font-mono block">Agritech Bharat Electronic Mandi</span>
+                  <span className="text-[10px] text-[#7A746B] uppercase font-mono block">KrishiQuant Electronic Mandi</span>
                   <h3 className="text-lg font-serif font-bold text-[#1C1C1C] mt-0.5">
                     GST Tax Invoice #{transaction.invoiceNumber || 'INV-2026-8812'}
                   </h3>

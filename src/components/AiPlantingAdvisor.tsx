@@ -326,7 +326,7 @@ export const AiPlantingAdvisor: React.FC<AiPlantingAdvisorProps> = ({
                   }}
                   className="w-full py-2.5 px-3 bg-[#2D4F38] hover:bg-[#1E3727] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs border border-[#3E654B]"
                 >
-                  <span>Pre-list on Agritech Bharat for Forward Off-Take</span>
+                  <span>Pre-list on KrishiQuant for Forward Off-Take</span>
                   <ArrowRight className="w-3.5 h-3.5 text-amber-200" />
                 </button>
               </div>

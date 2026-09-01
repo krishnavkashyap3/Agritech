@@ -5,12 +5,12 @@ import firebaseConfigJson from '../../firebase-applet-config.json';
 
 // Your web app's Firebase configuration
 export const firebaseConfig = {
-  apiKey: firebaseConfigJson.apiKey || "AIzaSyCgbqKQm7MBvhah9O7WNIQHlvQC0QJcrU0",
-  authDomain: firebaseConfigJson.authDomain || "agritech-4d623.firebaseapp.com",
-  projectId: firebaseConfigJson.projectId || "agritech-4d623",
-  storageBucket: firebaseConfigJson.storageBucket || "agritech-4d623.firebasestorage.app",
-  messagingSenderId: firebaseConfigJson.messagingSenderId || "1015784278623",
-  appId: firebaseConfigJson.appId || "1:1015784278623:web:9f4836a712c52060fe69ea",
+  apiKey: firebaseConfigJson.apiKey,
+  authDomain: firebaseConfigJson.authDomain,
+  projectId: firebaseConfigJson.projectId,
+  storageBucket: firebaseConfigJson.storageBucket,
+  messagingSenderId: firebaseConfigJson.messagingSenderId,
+  appId: firebaseConfigJson.appId,
 };
 
 // Initialize Firebase singleton

@@ -55,7 +55,7 @@ function getDynamicPlantingFallback(acreage: number, soilType: string, region: s
     keyTips: [
       'Target bold grain (9mm+ caliber) for 20% export & AGMARK Grade-1 premium',
       'Seed treat with Rhizobium & Trichoderma culture to cut chemical nitrogen expense by 50%',
-      `For your ${acreage || 50}-acre holding, pre-book forward contracts on AgriDirect for guaranteed procurement above MSP`
+      `For your ${acreage || 50}-acre holding, pre-book forward contracts on KrishiQuant for guaranteed procurement above MSP`
     ]
   } : {
     cropName: 'High-Protein Sharbati Wheat (Export Quality C-306)',
@@ -74,7 +74,7 @@ function getDynamicPlantingFallback(acreage: number, soilType: string, region: s
     keyTips: [
       'Maintain moisture under 11.5% post-combine harvest for zero mandi refraction deduction',
       'Apply split-dose zinc sulphate to optimize grain shine and protein test weight',
-      'List verified weighbridge lots on AgriDirect for direct miller procurement without middlemen commissions'
+      'List verified weighbridge lots on KrishiQuant for direct miller procurement without middlemen commissions'
     ]
   };
 
@@ -205,7 +205,7 @@ app.post('/api/ai/planting-advice', async (req, res) => {
       return res.json(getDynamicPlantingFallback(acreage, soilType, region, waterSource, targetSeason));
     }
 
-    const prompt = `You are the chief Agricultural Economist and Agronomy AI engine for AgriDirect, a direct B2B agricultural commodity ecosystem in India connecting farmers (Kisans & FPOs) with bulk enterprise buyers (millers, food processors, export houses, FMCG brands like ITC, Adani Wilmar, Haldiram, Nestle).
+    const prompt = `You are the chief Agricultural Economist and Agronomy AI engine for KrishiQuant, a direct B2B agricultural commodity ecosystem in India connecting farmers (Kisans & FPOs) with bulk enterprise buyers (millers, food processors, export houses, FMCG brands like ITC, Adani Wilmar, Haldiram, Nestle).
 
 Farmer / Farm Parameters:
 - Acreage: ${acreage || '25-50'} acres
@@ -323,7 +323,7 @@ function getDynamicNegotiationFallback(cropName: string, quantityTons: number, a
     dealHealthScore: healthScore,
     analysis: `Mandi depth analysis for ${cropName || 'this lot'} (${quantityTons || 10} MT, ${qualityGrade || 'Grade A'}, ${moistureContent || '12%'} moisture) confirms that settling at ₹${fairPrice.toLocaleString('en-IN')}/MT (₹${Math.round(fairPrice / 10).toLocaleString('en-IN')}/Quintal) provides a viable 4% volume discount for the buyer while maintaining solid margins over local APMC mandi spot rates at ${location || 'origin godown'}.`,
     suggestedTerms: [
-      '20% AgriDirect Escrow lock upon contract signing, 80% released following certified APMC weighbridge receipt and AGMARK moisture test',
+      '20% KrishiQuant Escrow lock upon contract signing, 80% released following certified APMC weighbridge receipt and AGMARK moisture test',
       `Moisture strictly capped at ${moistureContent || '12%'} with standardized APMC deduction schedule for higher moisture`,
       'Logistics dispatch within 5 working days with electronic e-Way bill and direct godown loading'
     ]
@@ -340,7 +340,7 @@ app.post('/api/ai/negotiate', async (req, res) => {
       return res.json(getDynamicNegotiationFallback(cropName, quantityTons, askedPricePerTon, proposedPricePerTon, qualityGrade, moistureContent, location));
     }
 
-    const prompt = `You are the AgriDirect Indian Commodity Deal Optimizer & Mandi Valuation Engine.
+    const prompt = `You are the KrishiQuant Indian Commodity Deal Optimizer & Mandi Valuation Engine.
 A bulk enterprise buyer (miller/food processor) and a farmer/FPO are negotiating a bulk commodity lot on the platform:
 - Crop: ${cropName}
 - Quantity: ${quantityTons} Metric Tons (MT)
@@ -445,7 +445,7 @@ function getDynamicGraphAnalysisFallback(chartData: any[], category?: string, us
           demandIndex: 96,
           projectedRoiPercentage: 56,
           sowingWindow: 'Rabi Window (Oct 15 - Nov 20)',
-          economicRationale: 'Acute national pulse deficit of 1,430 MT on AgriDirect alone. Domestic dal millers and Middle East export buyers are competing aggressively at ₹72,000/MT (₹7,200/quintal) with 0% demurrage at farmgate.',
+          economicRationale: 'Acute national pulse deficit of 1,430 MT on KrishiQuant alone. Domestic dal millers and Middle East export buyers are competing aggressively at ₹72,000/MT (₹7,200/quintal) with 0% demurrage at farmgate.',
           targetBuyers: ['Tata Sampann & Dal Millers', 'ITC e-Choupal', 'APEDA Export Houses', 'Namkeen Manufacturers'],
           soilAndWater: 'Black Cotton Soil (Regur) or Sandy Loam; Low water (1-2 irrigations max). Fixes nitrogen naturally.',
         },
@@ -483,7 +483,7 @@ function getDynamicGraphAnalysisFallback(chartData: any[], category?: string, us
       strategicAdvice: [
         'Always compare the Buyer Demand vs Warehouse Stock bar ratio before selecting sowing varieties: crops with stock-to-demand ratio below 0.5 provide 3x price protection over MSP.',
         'Beware of Market Gluts: Avoid planting uncontracted table potatoes and open-market onions this season. Re-allocate 40%-60% of acreage to Pulses (Chana, Moong) and Oilseeds (Mustard, Til).',
-        'Lock in forward agreements on AgriDirect 30-45 days prior to harvest to guarantee farmgate pickup and avoid APMC mandi transportation commissions.'
+        'Lock in forward agreements on KrishiQuant 30-45 days prior to harvest to guarantee farmgate pickup and avoid APMC mandi transportation commissions.'
       ]
     }
   };
@@ -499,7 +499,7 @@ app.post('/api/ai/analyze-market-graph', async (req, res) => {
       return res.json(getDynamicGraphAnalysisFallback(chartData, category, userQuery, farmLocation));
     }
 
-    const prompt = `You are the Chief Commodity Economist and Predictive Agronomist for AgriDirect Bharat, an Indian B2B agricultural marketplace.
+    const prompt = `You are the Chief Commodity Economist and Predictive Agronomist for KrishiQuant, an Indian B2B agricultural marketplace.
 You are analyzing a live Bar Chart representing Indian agricultural commodities with current Mandi Spot Prices (₹/Metric Ton), Government Minimum Support Prices (MSP), Warehouse/Cold Storage Stocks (Metric Tons), and Active Wholesale Buyer Procurement Demand (Metric Tons).
 
 Current Graphed Dataset:
@@ -606,7 +606,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`AgriDirect Server running on http://0.0.0.0:${PORT}`);
+    console.log(`KrishiQuant Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

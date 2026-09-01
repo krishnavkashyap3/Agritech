@@ -251,7 +251,7 @@ export const INITIAL_CROP_LISTINGS: CropListing[] = [
     readyStatus: 'Ready for Dispatch',
     certifications: ['Jaivik Bharat (NPOP)', 'Curcumin 4.8% Lab Tested', 'Spices Board India'],
     moistureContent: 9.5,
-    imageUrl: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=600&auto=format&fit=crop&q=80',
     description: 'Double-polished bright golden finger turmeric with rich 4.8% active curcumin content. Grown using organic Panchagavya methods in Erode valley.',
     createdAt: '2026-08-19',
   },
@@ -273,7 +273,7 @@ export const INITIAL_CROP_LISTINGS: CropListing[] = [
     readyStatus: 'Ready for Dispatch',
     certifications: ['42% Oil Extraction Guaranteed', 'Low Erucic Acid Standard'],
     moistureContent: 7.8,
-    imageUrl: 'https://images.unsplash.com/photo-1508746829417-e6f548d8d6ed?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1608797178974-15b35a61dd78?w=600&auto=format&fit=crop&q=80',
     description: 'Cleaned black mustard seeds with guaranteed 42% cold-press kachi ghani oil content. High essential allyl isothiocyanate pungency.',
     createdAt: '2026-08-24',
   },
@@ -378,9 +378,14 @@ export const INITIAL_TRANSACTIONS: OrderTransaction[] = [
     pricePerTon: 78000,
     totalAmount: 3120000,
     status: 'In Transit',
-    logisticsPartner: 'Kisan Rail & Dedicated Container Fleet',
+    logisticsPartner: 'Kisan Rail & Dedicated Multi-Axle Fleet',
     destination: 'Sonepat Processing Plant, Haryana',
     timestamp: '2026-08-28 14:32',
+    escrowStatus: 'Locked in Reserve Bank Escrow Vault',
+    truckNumber: 'HR 05 BA 4421',
+    driverName: 'Balwinder Singh',
+    driverPhone: '+91 98220 91823',
+    currentCheckpoint: 'NH-44 Murthal Expressway Waypoint (In Transit)'
   },
   {
     id: 'TXN-9022',
@@ -394,10 +399,15 @@ export const INITIAL_TRANSACTIONS: OrderTransaction[] = [
     quantityTons: 60,
     pricePerTon: 34500,
     totalAmount: 2070000,
-    status: 'Escrow Locked',
+    status: 'In Transit',
     logisticsPartner: 'APMC Freight Inter-State Roadlines',
     destination: 'Vidisha Plant, Madhya Pradesh',
     timestamp: '2026-08-29 09:15',
+    escrowStatus: 'Locked in Reserve Bank Escrow Vault',
+    truckNumber: 'MP 04 GA 8819',
+    driverName: 'Devendra Yadav',
+    driverPhone: '+91 94250 19283',
+    currentCheckpoint: 'Bhopal Bypass Highway Toll Plaza'
   },
   {
     id: 'TXN-9023',
@@ -415,6 +425,11 @@ export const INITIAL_TRANSACTIONS: OrderTransaction[] = [
     logisticsPartner: 'Gati-KWE Agro Express',
     destination: 'Bengaluru, Karnataka',
     timestamp: '2026-08-25 11:20',
+    escrowStatus: 'Released to Farmer Bank Account',
+    truckNumber: 'TN 33 AK 7124',
+    driverName: 'K. Murugan',
+    driverPhone: '+91 97890 44192',
+    currentCheckpoint: 'Electronic City Consignee Godown (Delivered)'
   }
 ];
 
@@ -436,7 +451,7 @@ export const PRESET_AI_RECOMMENDATIONS: AIPlantingRecommendation[] = [
     keyTips: [
       'Seed treatment with Rhizobium and Trichoderma reduces root-rot risk and slashes urea requirements by 65%',
       'Maintain uniform 10cm seed spacing to achieve 10mm+ jumbo Dollar caliber fetching 20% price premium in mandis',
-      'Lock in forward price agreements on Agritech Bharat before flowering stage'
+      'Lock in forward price agreements on KrishiQuant before flowering stage'
     ]
   },
   {

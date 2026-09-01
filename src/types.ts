@@ -195,6 +195,7 @@ export interface OrderTransaction {
   eWayBillNumber?: string;
   estimatedDeliveryDate?: string;
   currentCheckpoint?: string;
+  escrowStatus?: string;
 }
 
 export interface ProcurementCartItem {

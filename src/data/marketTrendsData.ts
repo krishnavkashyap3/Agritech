@@ -286,7 +286,7 @@ export const INITIAL_AI_GRAPH_ANALYSIS: MarketGraphAiAnalysis = {
       demandIndex: 96,
       projectedRoiPercentage: 56,
       sowingWindow: 'Rabi Window (Oct 15 - Nov 20)',
-      economicRationale: 'Acute national pulse deficit of 1,430 MT on Agritech Bharat alone. Domestic dal millers and Middle East export buyers are competing aggressively at ₹72,000/MT (₹7,200/quintal) with 0% demurrage at farmgate.',
+      economicRationale: 'Acute national pulse deficit of 1,430 MT on KrishiQuant alone. Domestic dal millers and Middle East export buyers are competing aggressively at ₹72,000/MT (₹7,200/quintal) with 0% demurrage at farmgate.',
       targetBuyers: ['Tata Sampann & Dal Millers', 'ITC e-Choupal', 'APEDA Export Houses', 'Namkeen Manufacturers'],
       soilAndWater: 'Black Cotton Soil (Regur) or Sandy Loam; Low water (1-2 irrigations max). Fixes nitrogen naturally.',
     },
@@ -324,6 +324,6 @@ export const INITIAL_AI_GRAPH_ANALYSIS: MarketGraphAiAnalysis = {
   strategicAdvice: [
     'Always compare the Buyer Demand vs Warehouse Stock bar ratio before selecting sowing varieties: crops with stock-to-demand ratio below 0.5 provide 3x price protection over MSP.',
     'Beware of Market Gluts: Avoid planting uncontracted table potatoes and open-market onions this season. Re-allocate 40%-60% of acreage to Pulses (Chana, Moong) and Oilseeds (Mustard, Til).',
-    'Lock in forward agreements on Agritech Bharat 30-45 days prior to harvest to guarantee farmgate pickup and avoid APMC mandi transportation commissions.'
+    'Lock in forward agreements on KrishiQuant 30-45 days prior to harvest to guarantee farmgate pickup and avoid APMC mandi transportation commissions.'
   ]
 };

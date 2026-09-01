@@ -36,9 +36,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCreateListing,
   onOpenCreateRfq,
 }) => {
-  const { firebaseUser, logOut } = useAuth();
+  const { firebaseUser, isAuthenticated, logOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+
+  const isUserLoggedIn = Boolean((firebaseUser || isAuthenticated) && currentUser.id && currentUser.name);
 
   return (
     <header className="sticky top-0 z-40 bg-[#FAF9F6] border-b border-[#E8E5DF] shadow-xs">
@@ -55,8 +57,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <div className="w-10 h-10 rounded-xl bg-[#233B2B] border border-[#3E5C47] flex items-center justify-center p-0.5 overflow-hidden shadow-xs group-hover:scale-105 transition-transform duration-200">
                 <img 
-                  src="/agritech-bharat-logo.jpg" 
-                  alt="Agritech Bharat Logo" 
+                  src="/krishiquant-logo.jpg" 
+                  alt="KrishiQuant Logo" 
                   className="w-full h-full object-cover rounded-lg"
                   onError={(e) => {
                     // Fallback to sprout icon if image loading fails
@@ -66,9 +68,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
               <div>
                 <span className="text-xl font-serif font-extrabold tracking-tight text-[#1C1C1C] group-hover:text-[#233B2B] transition flex items-center gap-1.5">
-                  Agritech
+                  Krishi<span className="text-[#2D4F38]">Quant</span>
                   <span className="text-[10px] bg-[#E8E1D5] text-[#233B2B] font-bold px-1.5 py-0.2 rounded font-sans uppercase tracking-wider border border-[#D5CCBD]">
-                    Bharat
+                    e-NAM
                   </span>
                 </span>
                 <span className="text-[10px] text-[#7A746B] font-medium block leading-none tracking-wide">
@@ -183,7 +185,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Profile / Auth Menu */}
             <div className="relative">
-              {firebaseUser ? (
+              {isUserLoggedIn ? (
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -260,7 +262,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-[#233B2B] hover:bg-[#1B2F22] text-amber-200 text-xs font-semibold transition border border-[#3E5C47] shadow-xs"
                 >
                   <LogIn className="w-3.5 h-3.5" />
-                  <span>Sign In / Sign Up</span>
+                  <span>Sign In with Email</span>
                 </button>
               )}
             </div>
@@ -274,7 +276,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={onOpenAuthModal}
               className="p-1.5 px-2.5 rounded-lg border border-[#E0DBD1] text-xs font-bold text-[#1C1C1C] bg-[#F4F1EA] flex items-center gap-1"
             >
-              {firebaseUser ? (
+              {isUserLoggedIn ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span>{currentUser.name.split(' ')[0]}</span>

@@ -191,7 +191,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setProcessingStepText('Initiating 256-bit Secure Handshake with Reserve Bank of India Settlement Network...');
 
     setTimeout(() => {
-      setProcessingStepText('Locking Funds into e-NAM Agritech Bharat Escrow Trust Vault...');
+      setProcessingStepText('Locking Funds into e-NAM KrishiQuant Escrow Trust Vault...');
     }, 900);
 
     setTimeout(() => {
@@ -217,7 +217,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         pricePerTon: pricePerTon,
         totalAmount: totalAmount,
         status: 'Escrow Locked',
-        logisticsPartner: logisticsChoice === 'agridirect_freight' ? 'Agritech Bharat Intermodal Logistics' : logisticsChoice === 'farmer_delivery' ? 'Farmer Mandi Transport' : 'Buyer Dedicated Fleet',
+        logisticsPartner: logisticsChoice === 'agridirect_freight' ? 'KrishiQuant Intermodal Logistics' : logisticsChoice === 'farmer_delivery' ? 'Farmer Mandi Transport' : 'Buyer Dedicated Fleet',
         destination: `${selectedAddress.addressLine1}, ${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.pincode}`,
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
         paymentMethod: selectedPaymentChannel,
@@ -267,7 +267,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const handleDownloadSlip = () => {
     if (!createdTxn) return;
     const content = `=====================================================
-AGRITECH BHARAT COMMODITY EXCHANGE
+KRISHIQUANT COMMODITY EXCHANGE
 OFFICIAL e-MANDI TAX INVOICE & TRADE CONTRACT
 =====================================================
 Invoice No: ${invoiceNumber}
@@ -316,20 +316,20 @@ ESCROW RELEASE CONDITIONS:
 2. Digital AGMARK moisture inspection report <= ${listing.moistureContent}%.
 3. Direct NEFT/RTGS fund release to farmer within 2 hours.
 
-Agritech Bharat Trust | RBI Escrow Compliance Ref: AGRI-ESC-2026-9042
+KrishiQuant Trust | RBI Escrow Compliance Ref: AGRI-ESC-2026-9042
 =====================================================`;
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Agritech_Bharat_Invoice_${createdTxn.id}.txt`;
+    link.download = `KrishiQuant_Invoice_${createdTxn.id}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   const virtualAccount = {
-    beneficiaryName: 'Agritech Bharat Escrow Trust A/C',
+    beneficiaryName: 'KrishiQuant Escrow Trust A/C',
     accountNumber: `AGRI${Math.floor(1000000000 + Math.random() * 9000000000)}`,
     ifsc: 'SBIN0001234',
     bankName: 'State Bank of India (B2B Clearing Division)',
@@ -552,7 +552,7 @@ Agritech Bharat Trust | RBI Escrow Compliance Ref: AGRI-ESC-2026-9042
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <strong className="text-xs font-serif text-[#233B2B] block">Agritech Bharat Freight</strong>
+                      <strong className="text-xs font-serif text-[#233B2B] block">KrishiQuant Freight</strong>
                       <span className="text-[10px] font-mono bg-[#2D4F38] text-white px-1.5 py-0.5 rounded">₹1,200/MT</span>
                     </div>
                     <p className="text-[11px] text-[#5C554B] mt-1 leading-snug">
@@ -828,7 +828,7 @@ Agritech Bharat Trust | RBI Escrow Compliance Ref: AGRI-ESC-2026-9042
                         <div className="pt-2 border-t border-[#E8E5DF]/70 text-[11px] text-[#7A746B] space-y-0.5">
                           <div className="flex items-center gap-1">
                             <Building className="w-3 h-3 text-[#2D4F38]" />
-                            <span>{addr.companyName || currentUser.orgName || 'Agritech Bharat Enterprise'}</span>
+                            <span>{addr.companyName || currentUser.orgName || 'KrishiQuant Enterprise'}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Phone className="w-3 h-3 text-[#2D4F38]" />
@@ -1090,13 +1090,13 @@ Agritech Bharat Trust | RBI Escrow Compliance Ref: AGRI-ESC-2026-9042
                                 Instant Mandi UPI Clearing
                               </h4>
                               <p className="text-[#5C554B] text-[11px]">
-                                Dynamic QR linked directly to Agritech Bharat Escrow Trust (A/C: <strong className="font-mono">agritech.escrow@icici</strong>).
+                                Dynamic QR linked directly to KrishiQuant Escrow Trust (A/C: <strong className="font-mono">krishiquant.escrow@icici</strong>).
                               </p>
                               <div className="flex items-center gap-1.5 bg-white border border-[#D5CCBD] px-2.5 py-1.5 rounded-lg text-xs font-mono text-[#1C1C1C]">
-                                <span className="truncate">agritech.escrow@icici</span>
+                                <span className="truncate">krishiquant.escrow@icici</span>
                                 <button
                                   type="button"
-                                  onClick={() => handleCopy('agritech.escrow@icici', 'vpa')}
+                                  onClick={() => handleCopy('krishiquant.escrow@icici', 'vpa')}
                                   className="text-[#2D4F38] hover:text-[#1E3727] font-semibold text-[11px] shrink-0"
                                 >
                                   {copiedField === 'vpa' ? 'Copied!' : 'Copy'}
@@ -1363,7 +1363,7 @@ Agritech Bharat Trust | RBI Escrow Compliance Ref: AGRI-ESC-2026-9042
                   Trade Contract Executed & Escrow Locked!
                 </h3>
                 <p className="text-xs text-[#5C554B] max-w-lg mx-auto leading-relaxed">
-                  Your payment of <strong className="text-[#233B2B] font-mono">₹{createdTxn.totalAmount.toLocaleString('en-IN')}</strong> is safely locked in the <strong>e-NAM Agritech Bharat Escrow Trust Vault</strong>. The seller (<strong className="text-[#1C1C1C]">{listing.farmerName}</strong>) has been issued a verified loading order.
+                  Your payment of <strong className="text-[#233B2B] font-mono">₹{createdTxn.totalAmount.toLocaleString('en-IN')}</strong> is safely locked in the <strong>e-NAM KrishiQuant Escrow Trust Vault</strong>. The seller (<strong className="text-[#1C1C1C]">{listing.farmerName}</strong>) has been issued a verified loading order.
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                   <span className="bg-white border border-[#C6DFC9] px-3 py-1 rounded-full text-xs font-mono text-[#233B2B] font-bold">
@@ -1382,7 +1382,7 @@ Agritech Bharat Trust | RBI Escrow Compliance Ref: AGRI-ESC-2026-9042
                 <div className="flex flex-wrap justify-between items-start pb-4 border-b border-[#E8E5DF] gap-4">
                   <div>
                     <span className="text-xs font-bold text-[#233B2B] uppercase tracking-wider font-serif block">
-                      AGRITECH BHARAT COMMODITY EXCHANGE
+                      KRISHIQUANT COMMODITY EXCHANGE
                     </span>
                     <h4 className="text-lg font-serif font-bold text-[#1C1C1C]">Official e-Mandi Tax Invoice & Sauda Slip</h4>
                     <div className="text-[11px] text-[#7A746B] mt-1 space-y-0.5">

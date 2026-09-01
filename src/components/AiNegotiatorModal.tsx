@@ -66,7 +66,7 @@ export const AiNegotiatorModal: React.FC<AiNegotiatorModalProps> = ({
         dealHealthScore: 92,
         analysis: `AI Market Depth indicates steady demand for ${listing.cropName}. Setting the contract rate at ₹${fairVal.toLocaleString('en-IN')}/MT provides a volume incentive for ${proposedQuantity} MT while ensuring fair MSP-plus margins for the producer.`,
         suggestedTerms: [
-          '25% Agritech Bharat Escrow lock upon agreement, 75% released after AGMARK moisture verification',
+          '25% KrishiQuant Escrow lock upon agreement, 75% released after AGMARK moisture verification',
           `Quality standard guaranteed to adhere to ${listing.grade}`,
           'Includes direct electronic mandi weighbridge receipt and transport e-Way bill'
         ]

@@ -41,6 +41,7 @@ export default function App() {
   const { 
     currentUser, 
     setCurrentUser, 
+    isAuthenticated,
     saveOrderToFirestore, 
     firestoreOrders, 
     firebaseUser,
@@ -97,6 +98,9 @@ export default function App() {
 
   // Modals state
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authPrompt, setAuthPrompt] = useState<string | undefined>(undefined);
+  const [pendingAuthAction, setPendingAuthAction] = useState<(() => void) | null>(null);
+
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [checkoutListing, setCheckoutListing] = useState<CropListing | null>(null);
   const [checkoutInitQty, setCheckoutInitQty] = useState<number | undefined>(undefined);
@@ -113,6 +117,18 @@ export default function App() {
 
   // Handlers
   const handleOpenCheckout = (listing: CropListing, qty?: number, price?: number) => {
+    if (!isAuthenticated) {
+      setAuthPrompt(`Please sign in or create an account to procure "${listing.cropName}" and execute e-NAM escrow payment.`);
+      setPendingAuthAction(() => () => {
+        setCheckoutListing(listing);
+        setCheckoutInitQty(qty);
+        setCheckoutInitPrice(price);
+        setCheckoutModalOpen(true);
+      });
+      setAuthModalOpen(true);
+      return;
+    }
+
     setCheckoutListing(listing);
     setCheckoutInitQty(qty);
     setCheckoutInitPrice(price);
@@ -194,7 +210,7 @@ export default function App() {
     const newComplaint: UserComplaint = {
       id: `complaint-${Date.now()}`,
       ticketNumber,
-      userName: currentUser.name || 'Agritech Bharat User',
+      userName: currentUser.name || 'KrishiQuant User',
       userContact: quickContact.trim() || currentUser.phone || currentUser.email || 'Registered User',
       issueCategory: quickCategory,
       subject: quickSubject.trim(),
@@ -278,6 +294,11 @@ export default function App() {
             onOpenNegotiator={handleOpenNegotiator}
             onOrderComplete={handleBatchOrdersComplete}
             onSwitchToDashboard={() => setActiveTab('dashboard')}
+            onRequireAuth={(action, promptMsg) => {
+              if (promptMsg) setAuthPrompt(promptMsg);
+              if (action) setPendingAuthAction(() => action);
+              setAuthModalOpen(true);
+            }}
           />
         )}
 
@@ -289,7 +310,38 @@ export default function App() {
         )}
 
         {activeTab === 'dashboard' && (
-          currentUser.role === 'farmer' ? (
+          (!isAuthenticated && !firebaseUser && (!currentUser.id || currentUser.id === '')) ? (
+            <div className="bg-white rounded-3xl p-8 sm:p-12 border border-[#E8E5DF] shadow-xs text-center max-w-xl mx-auto space-y-5 my-8">
+              <div className="w-16 h-16 rounded-2xl bg-[#EBF3ED] text-[#233B2B] flex items-center justify-center mx-auto border border-[#C6DFC9]">
+                <ShieldCheck className="w-8 h-8 text-[#2D4F38]" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-serif font-bold text-[#1C1C1C]">
+                  Sign In to Access Your Dashboard
+                </h2>
+                <p className="text-xs text-[#7A746B] max-w-md mx-auto leading-relaxed">
+                  Sign in with your registered email to view your harvest listings, active RFQ demand quotes, consignments, and live APMC escrow settlements.
+                </p>
+              </div>
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAuthModalOpen(true)}
+                  className="w-full sm:w-auto py-2.5 px-6 bg-[#233B2B] hover:bg-[#1B2F22] text-amber-200 font-semibold rounded-xl text-xs transition border border-[#3E5C47] shadow-xs flex items-center justify-center gap-2"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                  <span>Sign In with Email</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('marketplace')}
+                  className="w-full sm:w-auto py-2.5 px-5 bg-[#FAF9F6] hover:bg-[#EFEBE3] text-[#4A453E] font-semibold rounded-xl text-xs transition border border-[#D5CCBD]"
+                >
+                  Explore Marketplace
+                </button>
+              </div>
+            </div>
+          ) : currentUser.role === 'farmer' ? (
             <FarmerDashboard
               currentUser={currentUser}
               listings={listings}
@@ -322,8 +374,8 @@ export default function App() {
             <div className="flex items-center space-x-2.5">
               <div className="w-8 h-8 rounded-xl bg-[#2D4F38] border border-[#3E654B] flex items-center justify-center p-0.5 overflow-hidden shadow-xs">
                 <img 
-                  src="/agritech-bharat-logo.jpg" 
-                  alt="Agritech Bharat Logo" 
+                  src="/krishiquant-logo.jpg" 
+                  alt="KrishiQuant Logo" 
                   className="w-full h-full object-cover rounded-lg"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
@@ -331,7 +383,7 @@ export default function App() {
                 />
               </div>
               <span className="font-serif font-bold text-stone-100 text-lg tracking-tight">
-                Agritech <span className="text-amber-300 font-sans text-xs uppercase px-1.5 py-0.5 rounded bg-[#2A4232] font-semibold">Bharat</span>
+                Krishi<span className="text-amber-300 font-sans text-xs uppercase px-1.5 py-0.5 rounded bg-[#2A4232] font-semibold">Quant</span>
               </span>
             </div>
             <p className="text-[#A8A196] leading-relaxed text-[11px]">
@@ -538,11 +590,22 @@ export default function App() {
                 <span>e-NAM Arbitration Helpline</span>
               </div>
               <p>Toll Free: 1800-AGRI-CARE (1800-2474-2273)</p>
-              <p className="text-[9px] text-[#7A746B]">support@agritech-bharat.gov.in</p>
+              <p className="text-[9px] text-[#7A746B]">support@krishiquant.in</p>
             </div>
             <div className="pt-1 text-[10px] text-[#7A746B]">
-              © {new Date().getFullYear()} Agritech Bharat • Firebase: agritech-4d623
+              © {new Date().getFullYear()} KrishiQuant • National e-NAM Gateway
             </div>
+          </div>
+        </div>
+
+        {/* Footer Bottom Attribution */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 mt-8 border-t border-[#2A3B2E] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#A8A196]">
+          <div className="flex items-center gap-2">
+            <span>© {new Date().getFullYear()} KrishiQuant • National e-NAM Agricultural Gateway</span>
+          </div>
+          <div className="flex items-center gap-2 bg-[#223025] px-4 py-1.5 rounded-xl border border-[#344838] text-stone-200 shadow-xs">
+            <span className="text-[#A8A196] text-xs">Developed by</span>
+            <span className="font-serif font-bold text-amber-300 text-sm tracking-wider">" Parity Bit "</span>
           </div>
         </div>
       </footer>
@@ -550,7 +613,19 @@ export default function App() {
       {/* Auth Modal */}
       <AuthModal
         isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
+        onClose={() => {
+          setAuthModalOpen(false);
+          setAuthPrompt(undefined);
+          setPendingAuthAction(null);
+        }}
+        customPrompt={authPrompt}
+        onSuccess={() => {
+          if (pendingAuthAction) {
+            const action = pendingAuthAction;
+            setPendingAuthAction(null);
+            action();
+          }
+        }}
       />
 
       {/* Complaint / Grievance Modal */}
