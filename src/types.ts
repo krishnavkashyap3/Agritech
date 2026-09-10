@@ -24,7 +24,7 @@ export interface UserProfile {
   totalDeals: number;
 }
 
-export type CropCategory = 'Grains' | 'Millets' | 'Pulses & Legumes' | 'Oilseeds' | 'Cash Crops' | 'Fruits & Veg' | 'Spices';
+export type CropCategory = 'Grains' | 'Pulses & Legumes' | 'Oilseeds' | 'Cash Crops' | 'Fruits & Veg' | 'Spices';
 
 export interface CropListing {
   id: string;
