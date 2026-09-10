@@ -8,7 +8,7 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["farmer", "organisation", "individual"] },
+        "role": { "type": "string", "enum": ["farmer", "fpo", "organisation", "individual"] },
         "orgName": { "type": "string" },
         "farmName": { "type": "string" },
         "location": { "type": "string" },

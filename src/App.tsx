@@ -611,85 +611,100 @@ export default function App() {
       </footer>
 
       {/* Auth Modal */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => {
-          setAuthModalOpen(false);
-          setAuthPrompt(undefined);
-          setPendingAuthAction(null);
-        }}
-        customPrompt={authPrompt}
-        onSuccess={() => {
-          if (pendingAuthAction) {
-            const action = pendingAuthAction;
+      {authModalOpen && (
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => {
+            setAuthModalOpen(false);
+            setAuthPrompt(undefined);
             setPendingAuthAction(null);
-            action();
-          }
-        }}
-      />
+          }}
+          customPrompt={authPrompt}
+          onSuccess={() => {
+            if (pendingAuthAction) {
+              const action = pendingAuthAction;
+              setPendingAuthAction(null);
+              action();
+            }
+          }}
+        />
+      )}
 
       {/* Complaint / Grievance Modal */}
-      <ComplaintModal
-        isOpen={complaintModalOpen}
-        onClose={() => setComplaintModalOpen(false)}
-        currentUser={currentUser}
-        initialOrderId={complaintInitialOrderId}
-        onRegisterComplaint={handleRegisterComplaint}
-        complaintsList={complaints}
-      />
+      {complaintModalOpen && (
+        <ComplaintModal
+          isOpen={complaintModalOpen}
+          onClose={() => setComplaintModalOpen(false)}
+          currentUser={currentUser}
+          initialOrderId={complaintInitialOrderId}
+          onRegisterComplaint={handleRegisterComplaint}
+          complaintsList={complaints}
+        />
+      )}
 
       {/* Checkout / Escrow Modal */}
-      <CheckoutModal
-        isOpen={checkoutModalOpen}
-        onClose={() => setCheckoutModalOpen(false)}
-        listing={checkoutListing}
-        currentUser={currentUser}
-        initialQuantityTons={checkoutInitQty}
-        initialPricePerTon={checkoutInitPrice}
-        onCompleteOrder={handleCompleteOrder}
-        onTrackOrder={(txn) => {
-          setTrackingTxn(txn);
-          setTrackingModalOpen(true);
-        }}
-      />
+      {checkoutModalOpen && checkoutListing && (
+        <CheckoutModal
+          isOpen={checkoutModalOpen}
+          onClose={() => setCheckoutModalOpen(false)}
+          listing={checkoutListing}
+          currentUser={currentUser}
+          initialQuantityTons={checkoutInitQty}
+          initialPricePerTon={checkoutInitPrice}
+          onCompleteOrder={handleCompleteOrder}
+          onTrackOrder={(txn) => {
+            setTrackingTxn(txn);
+            setTrackingModalOpen(true);
+          }}
+        />
+      )}
 
       {/* Order Tracking Modal */}
-      <OrderTrackingModal
-        isOpen={trackingModalOpen}
-        onClose={() => setTrackingModalOpen(false)}
-        transaction={trackingTxn}
-        onUpdateStatus={(txnId, newStatus) => {
-          setTransactions((prev) =>
-            prev.map((t) => (t.id === txnId ? { ...t, status: newStatus } : t))
-          );
-        }}
-      />
+      {trackingModalOpen && trackingTxn && (
+        <OrderTrackingModal
+          isOpen={trackingModalOpen}
+          onClose={() => setTrackingModalOpen(false)}
+          transaction={trackingTxn}
+          onUpdateStatus={(txnId, newStatus) => {
+            setTransactions((prev) =>
+              prev.map((t) => (t.id === txnId ? { ...t, status: newStatus } : t))
+            );
+          }}
+        />
+      )}
 
       {/* AI Negotiator Modal */}
-      <AiNegotiatorModal
-        isOpen={negotiatorModalOpen}
-        onClose={() => setNegotiatorModalOpen(false)}
-        listing={negotiatorListing}
-        onApplyNegotiatedPrice={handleApplyNegotiatedPrice}
-      />
+      {negotiatorModalOpen && negotiatorListing && (
+        <AiNegotiatorModal
+          isOpen={negotiatorModalOpen}
+          onClose={() => setNegotiatorModalOpen(false)}
+          listing={negotiatorListing}
+          onApplyNegotiatedPrice={handleApplyNegotiatedPrice}
+        />
+      )}
 
       {/* Farmer Create Listing Modal */}
-      <CreateListingModal
-        isOpen={createListingModalOpen}
-        onClose={() => setCreateListingModalOpen(false)}
-        currentUser={currentUser}
-        onAddListing={handleAddListing}
-        prefillName={prefillListingName}
-        prefillCategory={prefillListingCategory}
-      />
+      {createListingModalOpen && (
+        <CreateListingModal
+          isOpen={createListingModalOpen}
+          onClose={() => setCreateListingModalOpen(false)}
+          currentUser={currentUser}
+          onAddListing={handleAddListing}
+          onOpenAuth={() => setAuthModalOpen(true)}
+          prefillName={prefillListingName}
+          prefillCategory={prefillListingCategory}
+        />
+      )}
 
       {/* Buyer Create RFQ Modal */}
-      <CreateRfqModal
-        isOpen={createRfqModalOpen}
-        onClose={() => setCreateRfqModalOpen(false)}
-        currentUser={currentUser}
-        onAddRfq={handleAddRfq}
-      />
+      {createRfqModalOpen && (
+        <CreateRfqModal
+          isOpen={createRfqModalOpen}
+          onClose={() => setCreateRfqModalOpen(false)}
+          currentUser={currentUser}
+          onAddRfq={handleAddRfq}
+        />
+      )}
     </div>
   );
 }

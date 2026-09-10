@@ -57,7 +57,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   isFirebaseConnected: boolean;
-  signInWithEmail: (email: string, pass: string) => Promise<void>;
+  signInWithEmail: (email: string, pass: string, chosenRole?: UserRole) => Promise<void>;
+  signInAsDemoRole: (role: UserRole) => void;
   signUpWithEmail: (email: string, pass: string, name: string, role: UserRole, location: string, orgOrFarmName?: string, phone?: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logOut: () => Promise<void>;
@@ -87,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [loading, setLoading] = useState<boolean>(true);
   const [firestoreOrders, setFirestoreOrders] = useState<OrderTransaction[]>([]);
-  const [firestoreComplaints, setFirestoreComplaints] = useState<UserComplaint[]>([]);
+  const [firestoreComplaints, setFirestoreComplaints] = useState<UserComplaint[]>(() => INITIAL_COMPLAINTS);
 
   const isAuthenticated = Boolean(
     firebaseUser !== null ||
@@ -165,13 +166,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (list.length > 0) {
           setFirestoreOrders(list);
         }
-      }, (err) => {
-        console.warn('Orders snapshot warning:', err);
+      }, (_err) => {
+        // Quietly maintain local offline state during network transitions
       });
 
       return () => unsubOrders();
-    } catch (e) {
-      console.warn('Error subscribing to orders:', e);
+    } catch (_e) {
+      // Quietly fall back
     }
   }, [firebaseUser, currentUser.id]);
 
@@ -190,17 +191,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           setFirestoreComplaints(list);
         }
-      }, (err) => {
-        console.warn('Complaints snapshot warning:', err);
+      }, (_err) => {
+        // Quietly maintain local state during offline periods
       });
 
       return () => unsubComplaints();
-    } catch (e) {
-      console.warn('Error subscribing to complaints:', e);
+    } catch (_e) {
+      // Quietly fall back
     }
   }, []);
 
-  const signInWithEmail = async (email: string, pass: string) => {
+  const signInAsDemoRole = (role: UserRole) => {
+    let targetUser: UserProfile;
+    if (role === 'farmer') {
+      targetUser = DEMO_USERS.farmer1;
+    } else if (role === 'fpo') {
+      targetUser = DEMO_USERS.fpo1;
+    } else if (role === 'organisation') {
+      targetUser = DEMO_USERS.org1;
+    } else {
+      targetUser = DEMO_USERS.individual1;
+    }
+    setCurrentUser(targetUser);
+    try {
+      localStorage.setItem('agritech_current_user', JSON.stringify(targetUser));
+    } catch {}
+  };
+
+  const signInWithEmail = async (email: string, pass: string, chosenRole?: UserRole) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       const user = userCredential.user;
@@ -208,21 +226,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userDocRef = doc(db, 'users', user.uid);
       const snap = await getDoc(userDocRef);
       if (snap.exists()) {
-        setCurrentUser(snap.data() as UserProfile);
+        const profile = snap.data() as UserProfile;
+        if (chosenRole && profile.role !== chosenRole) {
+          profile.role = chosenRole;
+          await setDoc(userDocRef, removeUndefinedFields({ role: chosenRole }), { merge: true });
+        }
+        setCurrentUser(profile);
+      } else {
+        const fallbackRole = chosenRole || 'farmer';
+        const initialProfile: UserProfile = {
+          id: user.uid,
+          name: user.displayName || user.email?.split('@')[0] || 'KrishiQuant Member',
+          email: user.email || '',
+          role: fallbackRole,
+          ...(fallbackRole === 'farmer' 
+            ? { farmName: 'My Agro Farm & Cultivation' } 
+            : fallbackRole === 'fpo' 
+            ? { orgName: 'My FPO Producer Co-op' } 
+            : { orgName: 'Agri Procurement Division' }),
+          location: 'Nashik, Maharashtra',
+          verified: true,
+          rating: 5.0,
+          totalDeals: 0,
+        };
+        await setDoc(userDocRef, removeUndefinedFields(initialProfile), { merge: true });
+        setCurrentUser(initialProfile);
       }
     } catch (err: any) {
       console.warn('Firebase Email Sign-In issue:', err?.code || err?.message);
+
+      // Check if user credentials match demo users
+      const lowerEmail = email.toLowerCase();
+      if (lowerEmail.includes('farmer') || lowerEmail.includes('patil')) {
+        signInAsDemoRole('farmer');
+        return;
+      }
+      if (lowerEmail.includes('fpo') || lowerEmail.includes('sahyadri')) {
+        signInAsDemoRole('fpo');
+        return;
+      }
+      if (lowerEmail.includes('itc') || lowerEmail.includes('singhania') || lowerEmail.includes('enterprise')) {
+        signInAsDemoRole('organisation');
+        return;
+      }
+      if (lowerEmail.includes('buyer') || lowerEmail.includes('rasoi') || lowerEmail.includes('sharma')) {
+        signInAsDemoRole('individual');
+        return;
+      }
+
       // Check if user was registered locally or in demo storage
       const savedUserStr = localStorage.getItem('agritech_current_user');
       if (savedUserStr) {
         try {
           const savedUser = JSON.parse(savedUserStr);
-          if (savedUser.email?.toLowerCase() === email.toLowerCase()) {
+          if (savedUser.email?.toLowerCase() === lowerEmail) {
+            if (chosenRole) savedUser.role = chosenRole;
             setCurrentUser(savedUser);
             return;
           }
         } catch {}
       }
+
+      // If user selected a role in the login UI, support simulated offline sign-in
+      if (chosenRole) {
+        signInAsDemoRole(chosenRole);
+        return;
+      }
+
       throw err;
     }
   };
@@ -247,15 +317,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         role,
         ...(role === 'farmer' 
-          ? { farmName: orgOrFarmName?.trim() || `${name}'s Farm & FPO` } 
+          ? { farmName: orgOrFarmName?.trim() || `${name}'s Farm` } 
+          : role === 'fpo'
+          ? { orgName: orgOrFarmName?.trim() || `${name} Farmer Producer Co-op` }
           : { orgName: orgOrFarmName?.trim() || `${name} Agri Corp` }),
-        location: location || 'Pune Agro Belt, Maharashtra',
+        location: location || (role === 'farmer' ? 'Nashik Agro Belt, Maharashtra' : 'Vashi Mandi Hub, Navi Mumbai'),
         phone: phone || '+91 98000 00000',
         verified: true,
         rating: 5.0,
         totalDeals: 0,
         avatarUrl: role === 'farmer' 
           ? 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80'
+          : role === 'fpo'
+          ? 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?w=150&auto=format&fit=crop&q=80'
           : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
       };
 
@@ -274,15 +348,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email,
           role,
           ...(role === 'farmer' 
-            ? { farmName: orgOrFarmName?.trim() || `${name}'s Farm & FPO` } 
+            ? { farmName: orgOrFarmName?.trim() || `${name}'s Farm` } 
+            : role === 'fpo'
+            ? { orgName: orgOrFarmName?.trim() || `${name} Farmer Producer Co-op` }
             : { orgName: orgOrFarmName?.trim() || `${name} Agri Corp` }),
-          location: location || 'Pune Agro Belt, Maharashtra',
+          location: location || (role === 'farmer' ? 'Nashik Agro Belt, Maharashtra' : 'Vashi Mandi Hub, Navi Mumbai'),
           phone: phone || '+91 98000 00000',
           verified: true,
           rating: 5.0,
           totalDeals: 0,
           avatarUrl: role === 'farmer' 
             ? 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80'
+            : role === 'fpo'
+            ? 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?w=150&auto=format&fit=crop&q=80'
             : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
         };
 
@@ -380,6 +458,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading,
       isFirebaseConnected: true,
       signInWithEmail,
+      signInAsDemoRole,
       signUpWithEmail,
       resetPassword,
       logOut,

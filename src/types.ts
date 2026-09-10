@@ -1,4 +1,13 @@
-export type UserRole = 'farmer' | 'organisation' | 'individual';
+export type UserRole = 'farmer' | 'fpo' | 'organisation' | 'individual';
+
+/**
+ * Authorization Rule:
+ * Only users signed in as 'farmer' are permitted to list crops and sell harvest lots.
+ * FPO aggregators and Direct Buyers (organisation/individual) are NOT permitted to list crops.
+ */
+export const canUserListCrops = (role?: UserRole | string): boolean => {
+  return role === 'farmer';
+};
 
 export interface UserProfile {
   id: string;
@@ -21,6 +30,7 @@ export interface CropListing {
   id: string;
   farmerId: string;
   farmerName: string;
+  farmerPhone?: string; // Contact mobile number for offline calls, WhatsApp, and godown visits
   farmLocation: string;
   farmerRating: number;
   cropName: string;

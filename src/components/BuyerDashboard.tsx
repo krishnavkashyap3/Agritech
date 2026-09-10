@@ -56,7 +56,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                 {currentUser.verified && (
                   <span className="inline-flex items-center gap-1 bg-[#EBF3ED] text-[#233B2B] border border-[#C6DFC9] text-[10px] font-bold px-2.5 py-0.5 rounded-full font-serif">
                     <ShieldCheck className="w-3 h-3 text-[#2D4F38]" />
-                    Verified {currentUser.role === 'individual' ? 'Artisanal / Co-op' : 'Enterprise Bulk Buyer'}
+                    Verified {currentUser.role === 'fpo' ? 'FPO Aggregator' : currentUser.role === 'individual' ? 'Direct Buyer' : 'Enterprise Bulk Buyer'}
                   </span>
                 )}
               </div>
@@ -87,6 +87,19 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
               <span>Post New RFQ Demand</span>
             </button>
           </div>
+        </div>
+
+        {/* Role Permissions Alert Banner */}
+        <div className="p-3 bg-[#FAF8F3] border border-[#E8E2D5] rounded-xl flex items-center justify-between text-xs text-[#5C554B]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <span>
+              Signed in as <strong>{currentUser.role === 'fpo' ? 'FPO Aggregator' : 'Direct Buyer'}</strong>. You can procure verified lots, place escrow orders, and submit demand RFQs. Crop lot listing is reserved for Farmers.
+            </span>
+          </div>
+          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+            Procurement Mode
+          </span>
         </div>
 
         {/* Stats Grid */}

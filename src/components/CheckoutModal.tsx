@@ -22,6 +22,8 @@ import {
   MapPin, 
   Building, 
   Phone, 
+  PhoneCall,
+  MessageSquare,
   Clock, 
   Calendar, 
   Droplets, 
@@ -74,17 +76,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onCompleteOrder,
   onTrackOrder,
 }) => {
-  if (!isOpen || !listing) return null;
-
   // Step state: 1 = Confirm Buying Details, 2 = Address Selection, 3 = Escrow Payment, 4 = Order Confirmed
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Step 1: Buying Details State
   const [quantity, setQuantity] = useState<number>(
-    initialQuantityTons || listing.minOrderQuantityTons || 10
+    initialQuantityTons || listing?.minOrderQuantityTons || 10
   );
   const [pricePerTon, setPricePerTon] = useState<number>(
-    initialPricePerTon || listing.pricePerTon
+    initialPricePerTon || listing?.pricePerTon || 0
   );
   const [logisticsChoice, setLogisticsChoice] = useState<'agridirect_freight' | 'farmer_delivery' | 'buyer_pickup'>('agridirect_freight');
 
@@ -292,6 +292,7 @@ Scheduled Delivery: ${preferredDate} (${deliverySlot} slot)
 SELLER (KISAN / FPO PRODUCER) DETAILS:
 -----------------------------------------------------
 Farmer / FPO: ${listing.farmerName}
+Farmer Direct Phone: ${listing.farmerPhone || '+91 98124 56781'}
 Mandi Origin: ${listing.farmLocation}
 Farmer Rating: ${listing.farmerRating} / 5.0 ⭐
 Quality Grade: ${listing.grade}
@@ -335,6 +336,8 @@ KrishiQuant Trust | RBI Escrow Compliance Ref: AGRI-ESC-2026-9042
     bankName: 'State Bank of India (B2B Clearing Division)',
     branch: 'Nariman Point Central Treasury, Mumbai',
   };
+
+  if (!isOpen || !listing) return null;
 
   return (
     <div id="checkout-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
@@ -426,6 +429,37 @@ KrishiQuant Trust | RBI Escrow Compliance Ref: AGRI-ESC-2026-9042
                         <Tractor className="w-3.5 h-3.5 text-[#2D4F38]" />
                         <span className="font-medium">{listing.farmerName}</span>
                         <span className="text-[#C2593F] font-bold">★ {listing.farmerRating}</span>
+                      </div>
+
+                      {/* Direct Farmer Contact for Offline Interaction */}
+                      <div className="flex flex-wrap items-center gap-2 mt-2 pt-1.5 border-t border-[#E8E5DF] text-xs">
+                        <span className="text-[11px] text-[#5C554B] flex items-center gap-1 font-mono">
+                          <Phone className="w-3 h-3 text-[#2D4F38]" />
+                          Farmer Phone (Offline):
+                        </span>
+                        <span className="font-mono font-bold text-[#1C1C1C] text-xs">
+                          {listing.farmerPhone || '+91 98124 56781'}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <a
+                            href={`tel:${(listing.farmerPhone || '+91 98124 56781').replace(/\s+/g, '')}`}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#2D4F38] text-white rounded text-[10px] font-semibold hover:bg-[#1A2E21] transition"
+                            title="Call Farmer Directly"
+                          >
+                            <PhoneCall className="w-2.5 h-2.5 text-amber-200" />
+                            <span>Call</span>
+                          </a>
+                          <a
+                            href={`https://wa.me/${(listing.farmerPhone || '+91 98124 56781').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Namaste, I am reviewing your listing ${listing.cropName} on KrishiQuant for direct procurement.`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#E8F5E9] text-[#1B5E20] border border-[#A5D6A7] rounded text-[10px] font-semibold hover:bg-[#C8E6C9] transition"
+                            title="WhatsApp Farmer"
+                          >
+                            <MessageSquare className="w-2.5 h-2.5" />
+                            <span>WhatsApp</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1411,10 +1445,36 @@ KrishiQuant Trust | RBI Escrow Compliance Ref: AGRI-ESC-2026-9042
 
                   <div className="bg-white p-3.5 rounded-xl border border-[#E8E5DF] space-y-1">
                     <span className="text-[10px] text-[#8A847A] uppercase font-mono block font-bold">PRODUCER / SELLER</span>
-                    <strong className="text-sm font-serif text-[#1C1C1C] block">{listing.farmerName}</strong>
+                    <div className="flex justify-between items-start">
+                      <strong className="text-sm font-serif text-[#1C1C1C] block">{listing.farmerName}</strong>
+                      <span className="text-[10px] text-[#2D4F38] bg-[#EBF3ED] px-1.5 py-0.5 rounded font-medium">★ {listing.farmerRating} Verified</span>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-1 pt-0.5 border-t border-[#F0ECE1]">
+                      <p className="text-[#1C1C1C] font-mono text-xs flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-[#2D4F38]" />
+                        <span>Direct Phone: <strong>{listing.farmerPhone || '+91 98124 56781'}</strong></span>
+                      </p>
+                      <div className="no-print flex items-center gap-1">
+                        <a
+                          href={`tel:${(listing.farmerPhone || '+91 98124 56781').replace(/\s+/g, '')}`}
+                          className="px-2 py-0.5 bg-[#2D4F38] text-white rounded text-[10px] font-semibold hover:bg-[#1E3727] transition flex items-center gap-1"
+                        >
+                          <PhoneCall className="w-2.5 h-2.5 text-amber-200" />
+                          <span>Call</span>
+                        </a>
+                        <a
+                          href={`https://wa.me/${(listing.farmerPhone || '+91 98124 56781').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Namaste, Order #${createdTxn.id} has been placed on KrishiQuant for your ${listing.cropName} (${quantity} MT). Let's coordinate dispatch.`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-0.5 bg-[#E8F5E9] text-[#1B5E20] border border-[#A5D6A7] rounded text-[10px] font-semibold hover:bg-[#C8E6C9] transition flex items-center gap-1"
+                        >
+                          <MessageSquare className="w-2.5 h-2.5" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
+                    </div>
                     <p className="text-[#5C554B]">Farmgate / Mandi Origin: {listing.farmLocation}</p>
-                    <p className="text-[#5C554B]">Rating: ★ {listing.farmerRating} • AGMARK Grade: {listing.grade}</p>
-                    <p className="text-[#2D4F38] font-medium text-[10px]">Certified Moisture: {listing.moistureContent}%</p>
+                    <p className="text-[#5C554B]">AGMARK Grade: {listing.grade} • Certified Moisture: {listing.moistureContent}%</p>
                   </div>
                 </div>
 

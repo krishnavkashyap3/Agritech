@@ -14,7 +14,12 @@ import {
   Plus,
   SlidersHorizontal,
   ChevronDown,
-  TrendingUp
+  TrendingUp,
+  Phone,
+  PhoneCall,
+  MessageSquare,
+  Copy,
+  Check
 } from 'lucide-react';
 
 interface MarketplaceProps {
@@ -53,6 +58,13 @@ export const Marketplace: React.FC<MarketplaceProps> = ({
   const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'volume_desc' | 'rating_desc'>('volume_desc');
   const [maxPrice, setMaxPrice] = useState<number>(200000);
   const [organicOnly, setOrganicOnly] = useState<boolean>(false);
+  const [copiedPhoneLotId, setCopiedPhoneLotId] = useState<string | null>(null);
+
+  const handleCopyPhone = (lotId: string, phone: string) => {
+    navigator.clipboard?.writeText(phone);
+    setCopiedPhoneLotId(lotId);
+    setTimeout(() => setCopiedPhoneLotId(null), 2000);
+  };
 
   useEffect(() => {
     if (initialSearchQuery) {
@@ -67,7 +79,8 @@ export const Marketplace: React.FC<MarketplaceProps> = ({
         item.cropName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.variety.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.farmLocation.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.farmerName.toLowerCase().includes(searchQuery.toLowerCase());
+        item.farmerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.farmerPhone && item.farmerPhone.toLowerCase().includes(searchQuery.toLowerCase()));
 
       // Category
       const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
@@ -338,6 +351,66 @@ export const Marketplace: React.FC<MarketplaceProps> = ({
                   <div className="flex items-center gap-1 text-xs text-[#7A746B]">
                     <MapPin className="w-3.5 h-3.5 text-[#8A847A] shrink-0" />
                     <span className="truncate">{listing.farmLocation}</span>
+                  </div>
+
+                  {/* Direct Offline Farmer Contact Section */}
+                  <div className="bg-[#FAF9F6] border border-[#E3DACD] rounded-xl p-2.5 space-y-1.5 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-[#5C554B] uppercase tracking-wider font-semibold font-mono flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-[#2D4F38]" />
+                        Direct Farmer Phone (Offline)
+                      </span>
+                      <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-medium">
+                        Farmgate Visit OK
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-mono font-bold text-[#1C1C1C]">
+                          {listing.farmerPhone || '+91 98124 56781'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyPhone(listing.id, listing.farmerPhone || '+91 98124 56781');
+                          }}
+                          className="text-[#7A746B] hover:text-[#1C1C1C] p-1 rounded hover:bg-[#EFEBE3] transition"
+                          title="Copy farmer phone number"
+                        >
+                          {copiedPhoneLotId === listing.id ? (
+                            <Check className="w-3 h-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <a
+                          href={`tel:${(listing.farmerPhone || '+91 98124 56781').replace(/\s+/g, '')}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#2D4F38] hover:bg-[#1E3727] text-white text-[11px] font-semibold rounded-lg shadow-xs transition"
+                          title="Direct Phone Call to Farmer"
+                        >
+                          <PhoneCall className="w-3 h-3 text-amber-200" />
+                          <span>Call</span>
+                        </a>
+
+                        <a
+                          href={`https://wa.me/${(listing.farmerPhone || '+91 98124 56781').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Namaste, I saw your ${listing.cropName} (${listing.availableQuantityTons} MT) on KrishiQuant and want to connect offline regarding sample checking and purchase.`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#E8F5E9] hover:bg-[#C8E6C9] text-[#1B5E20] border border-[#A5D6A7] text-[11px] font-semibold rounded-lg transition"
+                          title="Chat on WhatsApp"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Specifications Pill Grid */}

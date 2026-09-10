@@ -15,8 +15,6 @@ export const CreateRfqModal: React.FC<CreateRfqModalProps> = ({
   currentUser,
   onAddRfq,
 }) => {
-  if (!isOpen) return null;
-
   const [cropName, setCropName] = useState('');
   const [category, setCategory] = useState<CropCategory>('Grains');
   const [targetQuantityTons, setTargetQuantityTons] = useState(100);
@@ -46,6 +44,8 @@ export const CreateRfqModal: React.FC<CreateRfqModalProps> = ({
     onAddRfq(newRfq);
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div id="create-rfq-backdrop" className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-4 overflow-y-auto">

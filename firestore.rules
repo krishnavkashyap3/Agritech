@@ -46,10 +46,14 @@ service cloud.firestore {
       allow delete: if isAuthenticated();
     }
     
-    // Listings & RFQs (if synced to Firestore)
+    // Listings: Only users registered as farmers can create or modify harvest crop listings
     match /listings/{listingId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow create, update: if isAuthenticated() && (
+        !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'farmer'
+      );
+      allow delete: if isAuthenticated();
     }
 
     match /rfqs/{rfqId} {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CropListing } from '../types';
-import { Sparkles, X, TrendingUp, ShieldCheck, Scale, FileText, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Sparkles, X, TrendingUp, ShieldCheck, Scale, FileText, CheckCircle2, ArrowRight, Phone, PhoneCall, MessageSquare } from 'lucide-react';
 
 interface AiNegotiatorModalProps {
   isOpen: boolean;
@@ -15,10 +15,8 @@ export const AiNegotiatorModal: React.FC<AiNegotiatorModalProps> = ({
   listing,
   onApplyNegotiatedPrice,
 }) => {
-  if (!isOpen || !listing) return null;
-
-  const [proposedQuantity, setProposedQuantity] = useState<number>(listing.minOrderQuantityTons || 10);
-  const [proposedOffer, setProposedOffer] = useState<number>(Math.round(listing.pricePerTon * 0.95));
+  const [proposedQuantity, setProposedQuantity] = useState<number>(listing?.minOrderQuantityTons || 10);
+  const [proposedOffer, setProposedOffer] = useState<number>(Math.round((listing?.pricePerTon || 35000) * 0.95));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [negotiationResult, setNegotiationResult] = useState<{
     recommendedFairPrice: number;
@@ -75,6 +73,8 @@ export const AiNegotiatorModal: React.FC<AiNegotiatorModalProps> = ({
       setIsLoading(false);
     }
   };
+
+  if (!isOpen || !listing) return null;
 
   return (
     <div id="ai-negotiator-backdrop" className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-4 overflow-y-auto">
@@ -148,6 +148,35 @@ export const AiNegotiatorModal: React.FC<AiNegotiatorModalProps> = ({
               <span>Lot Grade: <strong className="text-[#1C1C1C]">{listing.grade}</strong></span>
               <span>Moisture: <strong className="text-[#1C1C1C]">{listing.moistureContent}%</strong></span>
               <span>Certifications: <strong className="text-[#1C1C1C]">{listing.certifications.join(', ')}</strong></span>
+            </div>
+
+            {/* Offline Farmer Direct Phone Contact */}
+            <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-2 p-2.5 bg-[#F4F1EA] rounded-xl border border-[#D5CCBD] text-xs">
+              <div className="flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-[#2D4F38]" />
+                <span className="text-[#5C554B]">Direct Farmer Phone (Offline):</span>
+                <span className="font-mono font-bold text-[#1C1C1C]">{listing.farmerPhone || '+91 98124 56781'}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={`tel:${(listing.farmerPhone || '+91 98124 56781').replace(/\s+/g, '')}`}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#2D4F38] text-white rounded-lg text-xs font-semibold hover:bg-[#1E3727] transition"
+                  title="Call Farmer Directly"
+                >
+                  <PhoneCall className="w-3 h-3 text-amber-200" />
+                  <span>Call Offline</span>
+                </a>
+                <a
+                  href={`https://wa.me/${(listing.farmerPhone || '+91 98124 56781').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Namaste ${listing.farmerName}, I am negotiating for ${listing.cropName} (${proposedQuantity} MT) on KrishiQuant and want to connect offline.`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#E8F5E9] text-[#1B5E20] border border-[#A5D6A7] rounded-lg text-xs font-semibold hover:bg-[#C8E6C9] transition"
+                  title="WhatsApp"
+                >
+                  <MessageSquare className="w-3 h-3" />
+                  <span>WhatsApp</span>
+                </a>
+              </div>
             </div>
           </div>
 

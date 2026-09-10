@@ -36,7 +36,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCreateListing,
   onOpenCreateRfq,
 }) => {
-  const { firebaseUser, isAuthenticated, logOut } = useAuth();
+  const { firebaseUser, isAuthenticated, logOut, signInAsDemoRole } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
@@ -205,21 +205,73 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                       </div>
                       <div className="text-[10px] font-semibold text-[#2D4F38] uppercase tracking-wider">
-                        {currentUser.role === 'farmer' ? 'Kisan (Synced)' : currentUser.role === 'organisation' ? 'Enterprise' : 'Buyer'}
+                        {currentUser.role === 'farmer' ? 'Kisan (Can List)' : currentUser.role === 'fpo' ? 'FPO Aggregator' : currentUser.role === 'organisation' ? 'Enterprise' : 'Direct Buyer'}
                       </div>
                     </div>
                     <ChevronDown className="w-3.5 h-3.5 text-[#8A847A]" />
                   </button>
 
                   {profileDropdownOpen && (
-                    <div className="absolute right-0 top-12 w-56 bg-white rounded-2xl shadow-xl border border-[#E8E5DF] p-2 space-y-1 z-50 animate-fadeIn">
+                    <div className="absolute right-0 top-12 w-64 bg-white rounded-2xl shadow-xl border border-[#E8E5DF] p-2 space-y-1 z-50 animate-fadeIn">
                       <div className="px-3 py-2 border-b border-[#F0ECE1] text-[11px] text-[#7A746B]">
                         <p className="font-bold text-[#1C1C1C] truncate">{currentUser.name}</p>
                         <p className="truncate text-[10px]">{currentUser.email}</p>
-                        <span className="inline-block mt-1 px-1.5 py-0.5 bg-[#EBF3ED] text-[#233B2B] font-mono text-[9px] rounded font-bold">
-                          Firebase Verified UID
-                        </span>
+                        <div className="mt-1 flex items-center gap-1">
+                          <span className={`px-1.5 py-0.5 font-mono text-[9px] rounded font-bold ${
+                            currentUser.role === 'farmer' 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : currentUser.role === 'fpo'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            Role: {currentUser.role === 'farmer' ? 'Farmer (Can List Crops)' : currentUser.role === 'fpo' ? 'FPO (No Crop Listing)' : 'Buyer (No Crop Listing)'}
+                          </span>
+                        </div>
                       </div>
+
+                      {/* Quick Role Switchers */}
+                      <div className="p-1.5 bg-[#FAF9F6] rounded-xl border border-[#EFEBE3] text-[10px] space-y-1">
+                        <span className="text-[10px] font-bold text-[#5C554B] block px-1">Switch Role for Testing:</span>
+                        <div className="grid grid-cols-3 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              signInAsDemoRole('farmer');
+                              setProfileDropdownOpen(false);
+                            }}
+                            className={`p-1 rounded-lg text-center font-bold transition ${
+                              currentUser.role === 'farmer' ? 'bg-[#233B2B] text-amber-200' : 'bg-white text-[#4A453E] border hover:bg-stone-100'
+                            }`}
+                          >
+                            Farmer
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              signInAsDemoRole('fpo');
+                              setProfileDropdownOpen(false);
+                            }}
+                            className={`p-1 rounded-lg text-center font-bold transition ${
+                              currentUser.role === 'fpo' ? 'bg-[#8C6B3D] text-white' : 'bg-white text-[#4A453E] border hover:bg-stone-100'
+                            }`}
+                          >
+                            FPO
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              signInAsDemoRole('individual');
+                              setProfileDropdownOpen(false);
+                            }}
+                            className={`p-1 rounded-lg text-center font-bold transition ${
+                              currentUser.role === 'individual' || currentUser.role === 'organisation' ? 'bg-[#3B5B7D] text-white' : 'bg-white text-[#4A453E] border hover:bg-stone-100'
+                            }`}
+                          >
+                            Buyer
+                          </button>
+                        </div>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => {
@@ -238,7 +290,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }}
                         className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-[#4A453E] hover:bg-[#F4F1EA] transition"
                       >
-                        Switch Account / Edit
+                        Login with Different Account
                       </button>
                       <button
                         type="button"

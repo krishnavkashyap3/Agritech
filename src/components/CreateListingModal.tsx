@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { CropListing, CropCategory, UserProfile } from '../types';
-import { X, Plus, Tractor, ShieldCheck, UploadCloud, Sparkles } from 'lucide-react';
+import { CropListing, CropCategory, UserProfile, canUserListCrops } from '../types';
+import { X, Plus, Tractor, ShieldCheck, UploadCloud, Sparkles, Phone, Ban, AlertTriangle, Sprout } from 'lucide-react';
 
 interface CreateListingModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: UserProfile;
   onAddListing: (listing: CropListing) => void;
+  onOpenAuth?: () => void;
   prefillName?: string;
   prefillCategory?: CropCategory;
 }
@@ -16,11 +17,11 @@ export const CreateListingModal: React.FC<CreateListingModalProps> = ({
   onClose,
   currentUser,
   onAddListing,
+  onOpenAuth,
   prefillName,
   prefillCategory,
 }) => {
-  if (!isOpen) return null;
-
+  const isFarmer = canUserListCrops(currentUser.role);
   const [cropName, setCropName] = useState(prefillName || '');
   const [category, setCategory] = useState<CropCategory>(prefillCategory || 'Grains');
   const [variety, setVariety] = useState('');
@@ -29,6 +30,7 @@ export const CreateListingModal: React.FC<CreateListingModalProps> = ({
   const [minOrderQuantityTons, setMinOrderQuantityTons] = useState(5);
   const [pricePerTon, setPricePerTon] = useState(38500);
   const [moistureContent, setMoistureContent] = useState(11.5);
+  const [farmerPhone, setFarmerPhone] = useState(currentUser.phone || '+91 98765 43210');
   const [readyStatus, setReadyStatus] = useState<'Ready for Dispatch' | 'Harvesting in 1-2 Weeks' | 'Pre-Harvest Contract'>('Ready for Dispatch');
   const [harvestDate, setHarvestDate] = useState('2026-09-01');
   const [certificationsText, setCertificationsText] = useState('AGMARK Grade-1, Jaivik Bharat Organic, FSSAI Certified');
@@ -39,6 +41,12 @@ export const CreateListingModal: React.FC<CreateListingModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canUserListCrops(currentUser.role)) {
+      alert('Only signed-in Farmers are authorized to list crops.');
+      return;
+    }
+
     const certs = certificationsText
       .split(',')
       .map((c) => c.trim())
@@ -48,6 +56,7 @@ export const CreateListingModal: React.FC<CreateListingModalProps> = ({
       id: `lot-${Date.now()}`,
       farmerId: currentUser.id,
       farmerName: currentUser.farmName || currentUser.name,
+      farmerPhone: farmerPhone.trim() || currentUser.phone || '+91 98765 43210',
       farmLocation: currentUser.location || 'Karnal, Haryana Mandi District',
       farmerRating: currentUser.rating || 4.9,
       cropName: cropName || 'Premium Sharbati Wheat',
@@ -71,6 +80,81 @@ export const CreateListingModal: React.FC<CreateListingModalProps> = ({
     onClose();
   };
 
+  if (!isOpen) return null;
+
+  // Non-farmer restriction view
+  if (!isFarmer) {
+    return (
+      <div id="create-listing-backdrop" className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-fadeIn">
+        <div 
+          id="create-listing-card" 
+          className="relative w-full max-w-md bg-[#FAF9F6] rounded-3xl shadow-2xl border border-[#E8E5DF] overflow-hidden p-6 sm:p-7 space-y-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            id="close-create-listing-btn"
+            onClick={onClose}
+            className="absolute top-5 right-5 text-[#8A847A] hover:text-[#1C1C1C] p-1.5 rounded-full hover:bg-[#EFEBE3] transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="w-12 h-12 rounded-2xl bg-rose-100 border border-rose-200 text-rose-700 flex items-center justify-center">
+            <Ban className="w-6 h-6" />
+          </div>
+
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-800 border border-rose-200 mb-1.5">
+              <span>Restricted: Farmers Only</span>
+            </div>
+            <h3 className="text-xl font-serif font-bold text-[#1C1C1C]">
+              Crop Listing is Restricted to Farmers
+            </h3>
+            <p className="text-xs text-[#5C554B] mt-1 leading-relaxed">
+              You are signed in as <strong>{currentUser.name}</strong> with the role of{' '}
+              <span className="font-bold text-[#1C1C1C] underline">
+                {currentUser.role === 'fpo' ? 'FPO Aggregator' : 'Direct Buyer'}
+              </span>.
+            </p>
+          </div>
+
+          <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-2xl text-xs space-y-1.5 text-amber-950">
+            <div className="font-bold flex items-center gap-1.5 text-amber-900">
+              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>KrishiQuant Marketplace Rules</span>
+            </div>
+            <p className="text-[11px] text-amber-800 leading-snug">
+              Under platform rules, FPO aggregators and Direct Buyers cannot list individual harvest lots. Only verified Kisan Farmers have harvest listing authorization.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-2">
+            {onOpenAuth && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenAuth();
+                }}
+                className="flex-1 py-2.5 px-4 bg-[#233B2B] hover:bg-[#1A2E21] text-amber-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Sprout className="w-3.5 h-3.5" />
+                <span>Switch to Farmer Sign In</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="py-2.5 px-4 bg-white hover:bg-[#F4F1EA] border border-[#D5CCBD] text-[#4A453E] rounded-xl text-xs font-bold transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div id="create-listing-backdrop" className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-4 overflow-y-auto">
       <div 
@@ -90,7 +174,7 @@ export const CreateListingModal: React.FC<CreateListingModalProps> = ({
           
           <div className="flex items-center space-x-2 text-amber-200 text-xs font-semibold uppercase tracking-wider mb-1 font-serif">
             <Tractor className="w-4 h-4 text-amber-300" />
-            <span>Kisan & FPO Listing Portal</span>
+            <span>Kisan Farmer Harvest Listing Portal</span>
           </div>
           <h2 className="text-xl font-serif font-bold text-[#FAF9F6]">
             List Bulk Harvest Lot for Millers & Enterprise Buyers
@@ -247,6 +331,28 @@ export const CreateListingModal: React.FC<CreateListingModalProps> = ({
                 className="w-full px-3 py-2 bg-[#FAF9F6] border border-[#D5CCBD] rounded-lg text-[#1C1C1C] focus:bg-white focus:ring-2 focus:ring-[#2D4F38] focus:outline-none"
               />
             </div>
+          </div>
+
+          {/* Farmer Contact Mobile Number for Offline Communication */}
+          <div className="bg-[#FAF9F6] border border-[#D5CCBD] p-3.5 rounded-xl space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Phone className="w-4 h-4 text-[#2D4F38]" />
+              <label htmlFor="listing-farmer-phone" className="block text-[#1C1C1C] font-semibold text-xs font-serif">
+                Farmer / FPO Contact Mobile Number (For Direct Offline Trade & Godown Visits) *
+              </label>
+            </div>
+            <input
+              type="tel"
+              required
+              id="listing-farmer-phone"
+              value={farmerPhone}
+              onChange={(e) => setFarmerPhone(e.target.value)}
+              placeholder="+91 98765 43210"
+              className="w-full px-3 py-2 bg-white border border-[#D5CCBD] rounded-lg text-[#1C1C1C] font-mono text-sm focus:ring-2 focus:ring-[#2D4F38] focus:outline-none"
+            />
+            <p className="text-[11px] text-[#7A746B] leading-relaxed">
+              Enterprise buyers, millers, and local traders can directly call or WhatsApp this phone number to inspect physical grain samples, visit your farmgate, or discuss offline purchasing.
+            </p>
           </div>
 
           {/* Certifications */}

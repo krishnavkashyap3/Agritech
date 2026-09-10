@@ -34,8 +34,6 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
   onRegisterComplaint,
   complaintsList,
 }) => {
-  if (!isOpen) return null;
-
   const [activeTab, setActiveTab] = useState<'new' | 'track'>('new');
   const [name, setName] = useState(currentUser?.name || '');
   const [contact, setContact] = useState(currentUser?.phone || currentUser?.email || '');
@@ -86,6 +84,8 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
       c.subject.toLowerCase().includes(searchTicketQuery.toLowerCase()) ||
       c.issueCategory.toLowerCase().includes(searchTicketQuery.toLowerCase())
   );
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
