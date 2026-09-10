@@ -11,20 +11,36 @@ const PORT = 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
-// Initialize GoogleGenAI SDK lazily/safely
-let genAI: GoogleGenAI | null = null;
+// Initialize GoogleGenAI SDK dynamically with support for single or comma-separated keys and rotation
+let currentApiKeyIndex = 0;
+function getActiveApiKeys(): string[] {
+  const raw = process.env.GEMINI_API_KEY || '';
+  return raw
+    .split(',')
+    .map(k => k.trim())
+    .filter(k => k.length > 0);
+}
+
 function getGenAI(): GoogleGenAI | null {
-  if (!genAI && process.env.GEMINI_API_KEY) {
-    genAI = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
+  const keys = getActiveApiKeys();
+  if (keys.length === 0) return null;
+  const key = keys[currentApiKeyIndex % keys.length];
+  return new GoogleGenAI({
+    apiKey: key,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
       },
-    });
+    },
+  });
+}
+
+function rotateApiKey(): void {
+  const keys = getActiveApiKeys();
+  if (keys.length > 1) {
+    currentApiKeyIndex = (currentApiKeyIndex + 1) % keys.length;
+    console.log(`[Gemini API] Switched to API key index #${currentApiKeyIndex + 1} of ${keys.length}`);
   }
-  return genAI;
 }
 
 // Health Check
@@ -164,35 +180,47 @@ function getDynamicPlantingFallback(acreage: number, soilType: string, region: s
   };
 }
 
-// Helper to call Gemini with retry & model fallback
-async function generateContentWithFallback(ai: GoogleGenAI, prompt: string, schema: any) {
+// Helper to call Gemini with retry & model fallback and API key rotation
+async function generateContentWithFallback(prompt: string, schema: any) {
   // Use gemini-3.1-flash-lite as primary high-availability fast model, followed by gemini-flash-latest and gemini-3.7-flash
   const models = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.7-flash'];
+  const keys = getActiveApiKeys();
+  const maxKeyAttempts = Math.max(1, keys.length);
   let lastError: any = null;
 
-  for (const model of models) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: schema,
-          },
-        });
-        if (response && response.text) {
-          return { text: response.text, modelUsed: model };
-        }
-      } catch (err: any) {
-        lastError = err;
-        if (attempt < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+  for (let k = 0; k < maxKeyAttempts; k++) {
+    const ai = getGenAI();
+    if (!ai) break;
+
+    for (const model of models) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: schema,
+            },
+          });
+          if (response && response.text) {
+            return { text: response.text, modelUsed: model };
+          }
+        } catch (err: any) {
+          lastError = err;
+          if (attempt < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+          }
         }
       }
     }
+    // If we have multiple keys and this key failed, rotate to the next one
+    if (keys.length > 1) {
+      rotateApiKey();
+    }
   }
-  throw lastError;
+
+  throw lastError || new Error('All AI models and keys exhausted');
 }
 
 // AI Crop Planting Recommendations & Market Guts / Gluts Model
@@ -293,7 +321,7 @@ Provide the output strictly in the requested JSON schema.`;
       required: ['marketSummary', 'glutWarning', 'recommendations']
     };
 
-    const { text, modelUsed } = await generateContentWithFallback(ai, prompt, schema);
+    const { text, modelUsed } = await generateContentWithFallback(prompt, schema);
     const parsed = JSON.parse(text || '{}');
     
     return res.json({
@@ -367,7 +395,7 @@ Provide a balanced, fair settlement price in INR per Metric Ton, a deal viabilit
       required: ['recommendedFairPrice', 'dealHealthScore', 'analysis', 'suggestedTerms']
     };
 
-    const { text, modelUsed } = await generateContentWithFallback(ai, prompt, schema);
+    const { text, modelUsed } = await generateContentWithFallback(prompt, schema);
     const parsed = JSON.parse(text || '{}');
     
     return res.json({
@@ -573,7 +601,7 @@ Respond strictly in JSON format matching the schema.`;
       required: ['executiveSummary', 'chartInsights', 'marketGluts', 'topPlantingRecommendations', 'strategicAdvice']
     };
 
-    const { text, modelUsed } = await generateContentWithFallback(ai, prompt, schema);
+    const { text, modelUsed } = await generateContentWithFallback(prompt, schema);
     const parsed = JSON.parse(text || '{}');
 
     return res.json({
@@ -741,7 +769,7 @@ Respond strictly in JSON format matching the schema.`;
       required: ['answer', 'keyTakeaways', 'recommendedPractices']
     };
 
-    const { text, modelUsed } = await generateContentWithFallback(ai, prompt, schema);
+    const { text, modelUsed } = await generateContentWithFallback(prompt, schema);
     const parsed = JSON.parse(text || '{}');
 
     return res.json({
