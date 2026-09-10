@@ -589,6 +589,173 @@ Respond strictly in JSON format matching the schema.`;
   }
 });
 
+// AI Planting Advisor Doubts & Q&A Fallback Generator
+function getDynamicAdvisorDoubtFallback(question: string, farmContext?: any) {
+  const q = question.toLowerCase();
+  const soil = farmContext?.soilType || 'your soil profile';
+  const region = farmContext?.region || 'your region';
+  const acreage = farmContext?.acreage || 50;
+
+  if (q.includes('fertilizer') || q.includes('urea') || q.includes('dap') || q.includes('npk') || q.includes('spray')) {
+    return {
+      success: true,
+      source: 'dynamic_engine',
+      answer: `For ${soil} in ${region}, balanced nutrition according to ICAR soil-test recommendations is critical. Over-application of synthetic Urea causes vegetative lodging and attracts sucking pests (aphids, jassids). We recommend adopting a 50:25:25 split dose for Nitrogen, applying full Phosphorus (DAP/SSP) and Potash (MOP) as basal at sowing. Seed treatment with Rhizobium (for pulses) or Azotobacter (for grains) plus PSB (Phosphorus Solubilizing Bacteria) reduces chemical fertilizer requirement by 20-30% while improving soil microbial structure.`,
+      keyTakeaways: [
+        'Apply Phosphate and Potash 100% as basal dose at sowing',
+        'Split Nitrogen application into 2-3 stages (sowing, tillering/branching, pre-flowering)',
+        'Use bio-fertilizers (Rhizobium / PSB / VAM) to save up to ₹1,800/acre in chemical input costs',
+        'Add 10-15 kg/acre Zinc Sulphate to eliminate micronutrient hidden hunger and increase grain shine'
+      ],
+      recommendedPractices: [
+        'Seed treatment with Trichoderma viride (5g/kg seed) for root wilt prevention',
+        'Foliar spray of 19:19:19 (1%) during vegetative phase for rapid stress recovery'
+      ],
+      marketInsight: 'High-protein grain with uniform caliber and low chemical residues commands an AGMARK Grade-1 premium of ₹1,500-₹2,500/MT from corporate millers.'
+    };
+  }
+
+  if (q.includes('water') || q.includes('drought') || q.includes('rain') || q.includes('irrigation') || q.includes('dry')) {
+    return {
+      success: true,
+      source: 'dynamic_engine',
+      answer: `In water-scarce or drought-prone conditions across ${region}, deep-rooted legumes and hardy oilseeds represent the most resilient economic choice. Dollar Kabuli Chana (chickpeas) and Pusa Mustard require only 1-2 critical life-saving irrigations (at branching and pod initiation). Avoid water-intensive commercial crops (like uncontracted sugarcane or summer vegetables) unless precision drip fertigation is in place. Drip irrigation cuts water usage by 45-60% while increasing yield by 20-30%.`,
+      keyTakeaways: [
+        'Prioritize drought-resilient crops: Kabuli Chana, Black Mustard, or Sesame',
+        'Critical irrigation stages: branching stage and 50% flowering; avoid flood irrigation',
+        'Adopt broad bed and furrow (BBF) layout to conserve sub-surface moisture',
+        'Apply straw or bio-mulch to reduce surface evaporation by up to 35%'
+      ],
+      recommendedPractices: [
+        'Use drip laterals with inline drippers spaced at 40cm for uniform discharge',
+        'Foliar spray of 1% Potassium Nitrate (13:0:45) before dry spells to induce drought tolerance'
+      ],
+      marketInsight: 'Crops like Kabuli Chana currently trade 25-35% above MSP due to domestic shortages, providing superior net returns on limited irrigation water.'
+    };
+  }
+
+  if (q.includes('price') || q.includes('market') || q.includes('crash') || q.includes('sell') || q.includes('mandi') || q.includes('msp')) {
+    return {
+      success: true,
+      source: 'dynamic_engine',
+      answer: `To hedge against post-harvest mandi price crashes, never sell 100% of your produce during peak harvest arrival months (e.g., April-May for Rabi, October-November for Kharif) when mandi yards are flooded with supply. Utilize KrishiQuant to secure forward procurement agreements 30-45 days before harvesting. Additionally, ensure produce moisture is dried under 11.5% and graded with uniform seed caliber to avoid distress deductions by APMC commission agents.`,
+      keyTakeaways: [
+        'Avoid selling during peak 30-day harvest arrivals when supply gluts depress spot rates',
+        'Negotiate forward off-take contracts with enterprise buyers on KrishiQuant for price lock-in',
+        'Store dry, cleaned grain in accredited warehouses (WDRA/APMC) to access pledge financing if needed',
+        'Sortex-grade your harvest to capture ₹2,000-₹4,000/MT premiums over standard mandi commercial lots'
+      ],
+      recommendedPractices: [
+        'Pre-book digital e-NAM weighbridge lots to bypass local arthiya middleman margins (saves 2.5%-4%)',
+        'Grade into AGMARK Grade A to qualify for direct flour miller / food processor delivery'
+      ],
+      marketInsight: 'Direct farmgate procurement by institutional buyers offers guaranteed electronic escrow payments within 24 hours of weighbridge verification.'
+    };
+  }
+
+  return {
+    success: true,
+    source: 'dynamic_engine',
+    answer: `Regarding "${question}": For your ${acreage}-acre operation in ${region} with ${soil}, agricultural profitability is maximized by selecting crops with strong structural supply deficits (such as high-protein pulses and high-oil oilseeds) over commoditized surplus crops. Ensure timely sowing in the optimal meteorological window, maintain soil organic carbon with bio-amendments, and adhere to AGMARK quality parameters (moisture <12%, zero foreign matter) to secure top-tier procurement agreements with enterprise millers.`,
+    keyTakeaways: [
+      'Align crop selection with wholesale deficit data to achieve 30%+ higher realizations than MSP',
+      'Timely sowing within the recommended agrometeorological window prevents yield loss and pest pressure',
+      'Ensure soil health testing every 2 years to apply precision micro-nutrients (Zinc, Boron, Sulphur)',
+      'Leverage KrishiQuant forward contracts to guarantee farmgate dispatch without distress sales'
+    ],
+    recommendedPractices: [
+      'Procure certified seeds from state agricultural universities or certified FPO seed banks',
+      'Maintain digital harvest records and quality test slips for rapid e-NAM trade certification'
+    ],
+    marketInsight: 'Institutional food processors actively pay 15-25% cash premiums over mandi averages for verified single-origin lots with documented moisture and purity.'
+  };
+}
+
+// AI Planting Advisor Doubts & Q&A Assistant
+app.post('/api/ai/ask-advisor', async (req, res) => {
+  const { question, farmContext, history } = req.body || {};
+
+  if (!question || typeof question !== 'string' || !question.trim()) {
+    return res.status(400).json({ success: false, error: 'A question or doubt is required.' });
+  }
+
+  const cleanQuestion = question.trim();
+  const contextStr = farmContext ? `
+Farmer / Farm Context:
+- Holding Acreage: ${farmContext.acreage || '25-50'} acres
+- Soil Profile: ${farmContext.soilType || 'Loam / Black Cotton Soil'}
+- Region / State: ${farmContext.region || 'India'}
+- Water / Irrigation: ${farmContext.waterSource || 'Canal / Tubewell / Drip'}
+- Target Sowing Season: ${farmContext.targetSeason || 'Upcoming season'}
+` : '';
+
+  try {
+    const ai = getGenAI();
+    if (!ai) {
+      return res.json(getDynamicAdvisorDoubtFallback(cleanQuestion, farmContext));
+    }
+
+    const prompt = `You are KrishiQuant's Chief Agronomist and Agricultural Market Advisor, helping Indian farmers (Kisans), FPOs, and agribusiness entrepreneurs make optimal, profitable, and scientifically sound farming and marketing decisions.
+
+${contextStr}
+
+Farmer's Question / Doubt:
+"${cleanQuestion}"
+
+${history && Array.isArray(history) && history.length > 0 ? `Recent Conversation History:
+${history.slice(-4).map((h: any) => `${h.role === 'user' ? 'Farmer' : 'Agronomist'}: ${h.text}`).join('\n')}
+` : ''}
+
+Task:
+Provide a thorough, highly practical, and scientifically accurate answer tailored to the Indian agricultural context (ICAR guidelines, APMC mandi dynamics, MSP economics, climate resilience, and biological soil health).
+Ensure your advice:
+1. Directly answers the doubt clearly in plain, respectful language suitable for progressive farmers.
+2. Gives concrete, actionable recommendations (such as specific high-yielding/disease-resistant varieties, seed rates, fertilizer/organic amendments, water-saving techniques, or market timing).
+3. Warns about common pitfalls or risks to avoid.
+4. Includes economic context where relevant (cost savings, expected price realizations in ₹/MT or ₹/Quintal, or forward contract tips).
+
+Respond strictly in JSON format matching the schema.`;
+
+    const schema = {
+      type: Type.OBJECT,
+      properties: {
+        answer: {
+          type: Type.STRING,
+          description: 'The comprehensive, direct explanation and agronomic advice for the farmer.',
+        },
+        keyTakeaways: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: '3-4 concise bullet points summarizing the key action items or rules of thumb.',
+        },
+        recommendedPractices: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: '2-3 specific technical practices (seed varieties, fertilizer/spray dosage, sowing depth, or mandi timing).',
+        },
+        marketInsight: {
+          type: Type.STRING,
+          description: 'A brief note on how this decision impacts profit margins, procurement demand, or MSP price stability in INR.',
+        }
+      },
+      required: ['answer', 'keyTakeaways', 'recommendedPractices']
+    };
+
+    const { text, modelUsed } = await generateContentWithFallback(ai, prompt, schema);
+    const parsed = JSON.parse(text || '{}');
+
+    return res.json({
+      success: true,
+      source: 'gemini',
+      modelUsed,
+      ...parsed,
+    });
+  } catch (error: any) {
+    console.warn('[Gemini API] Ask advisor fallback:', error?.message || error);
+    return res.json(getDynamicAdvisorDoubtFallback(cleanQuestion, farmContext));
+  }
+});
+
 // Vite Middleware & Static Serving
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

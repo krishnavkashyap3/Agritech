@@ -36,7 +36,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCreateListing,
   onOpenCreateRfq,
 }) => {
-  const { firebaseUser, isAuthenticated, logOut, signInAsDemoRole } = useAuth();
+  const { firebaseUser, isAuthenticated, logOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
@@ -226,49 +226,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                           }`}>
                             Role: {currentUser.role === 'farmer' ? 'Farmer (Can List Crops)' : currentUser.role === 'fpo' ? 'FPO (No Crop Listing)' : 'Buyer (No Crop Listing)'}
                           </span>
-                        </div>
-                      </div>
-
-                      {/* Quick Role Switchers */}
-                      <div className="p-1.5 bg-[#FAF9F6] rounded-xl border border-[#EFEBE3] text-[10px] space-y-1">
-                        <span className="text-[10px] font-bold text-[#5C554B] block px-1">Switch Role for Testing:</span>
-                        <div className="grid grid-cols-3 gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              signInAsDemoRole('farmer');
-                              setProfileDropdownOpen(false);
-                            }}
-                            className={`p-1 rounded-lg text-center font-bold transition ${
-                              currentUser.role === 'farmer' ? 'bg-[#233B2B] text-amber-200' : 'bg-white text-[#4A453E] border hover:bg-stone-100'
-                            }`}
-                          >
-                            Farmer
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              signInAsDemoRole('fpo');
-                              setProfileDropdownOpen(false);
-                            }}
-                            className={`p-1 rounded-lg text-center font-bold transition ${
-                              currentUser.role === 'fpo' ? 'bg-[#8C6B3D] text-white' : 'bg-white text-[#4A453E] border hover:bg-stone-100'
-                            }`}
-                          >
-                            FPO
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              signInAsDemoRole('individual');
-                              setProfileDropdownOpen(false);
-                            }}
-                            className={`p-1 rounded-lg text-center font-bold transition ${
-                              currentUser.role === 'individual' || currentUser.role === 'organisation' ? 'bg-[#3B5B7D] text-white' : 'bg-white text-[#4A453E] border hover:bg-stone-100'
-                            }`}
-                          >
-                            Buyer
-                          </button>
                         </div>
                       </div>
 

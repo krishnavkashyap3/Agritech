@@ -24,7 +24,7 @@ export interface UserProfile {
   totalDeals: number;
 }
 
-export type CropCategory = 'Grains' | 'Pulses & Legumes' | 'Oilseeds' | 'Cash Crops' | 'Fruits & Veg' | 'Spices';
+export type CropCategory = 'Grains' | 'Millets' | 'Pulses & Legumes' | 'Oilseeds' | 'Cash Crops' | 'Fruits & Veg' | 'Spices';
 
 export interface CropListing {
   id: string;
@@ -229,5 +229,17 @@ export interface UserComplaint {
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   status: 'Registered' | 'Under Investigation' | 'Resolved';
   createdAt: string;
+}
+
+export interface AIDoubtItem {
+  id: string;
+  question: string;
+  timestamp: string;
+  source?: 'gemini' | 'dynamic_engine';
+  modelUsed?: string;
+  answer: string;
+  keyTakeaways: string[];
+  recommendedPractices: string[];
+  marketInsight?: string;
 }
 

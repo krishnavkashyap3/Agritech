@@ -71,16 +71,64 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+interface RegisteredAccount {
+  profile: UserProfile;
+  passHash: string;
+}
+
+export const isDemoUser = (user: UserProfile | null | undefined): boolean => {
+  if (!user || !user.id) return false;
+  return (
+    user.id === 'farmer_ramesh_1' ||
+    user.id === 'fpo_sahyadri_1' ||
+    user.id === 'org_itc_1' ||
+    user.id === 'ind_rasoi_1' ||
+    user.id === 'demo_farmer_1' ||
+    user.email === 'ramesh.patil@kisanmail.in' ||
+    user.email === 'sahyadri.fpo@agrocoop.in' ||
+    user.email === 'procurement@itc-agri.in' ||
+    user.email === 'priya.sharma@rasoifoods.com'
+  );
+};
+
+const getRegisteredAccounts = (): Record<string, RegisteredAccount> => {
+  try {
+    const raw = localStorage.getItem('agritech_registered_accounts');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+};
+
+const saveRegisteredAccount = (profile: UserProfile, pass: string) => {
+  try {
+    const accounts = getRegisteredAccounts();
+    const key = (profile.email || '').toLowerCase().trim();
+    if (key) {
+      accounts[key] = {
+        profile,
+        passHash: pass,
+      };
+      localStorage.setItem('agritech_registered_accounts', JSON.stringify(accounts));
+    }
+  } catch {}
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   
-  // Clean default guest user when not signed in (no random Patil Krishi profile)
+  // Clean default guest user when not signed in (clear any previous demo profile)
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
     try {
       const savedUser = localStorage.getItem('agritech_current_user');
       if (savedUser) {
         const parsed = JSON.parse(savedUser);
-        if (parsed && parsed.id) return parsed;
+        if (parsed && parsed.id) {
+          if (isDemoUser(parsed)) {
+            localStorage.removeItem('agritech_current_user');
+            return GUEST_USER;
+          }
+          return parsed;
+        }
       }
     } catch {}
     return GUEST_USER;
@@ -219,67 +267,87 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithEmail = async (email: string, pass: string, chosenRole?: UserRole) => {
+    const cleanEmail = (email || '').trim();
+    const lowerEmail = cleanEmail.toLowerCase();
+    
+    if (!cleanEmail) {
+      throw new Error('Please enter your email address.');
+    }
+
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, pass);
       const user = userCredential.user;
-      // Load doc
+      
+      // Load user profile from Firestore 'users' collection
       const userDocRef = doc(db, 'users', user.uid);
       const snap = await getDoc(userDocRef);
+      let activeProfile: UserProfile;
+
       if (snap.exists()) {
         const profile = snap.data() as UserProfile;
-        if (chosenRole && profile.role !== chosenRole) {
-          profile.role = chosenRole;
+        activeProfile = {
+          ...profile,
+          id: user.uid,
+          email: user.email || cleanEmail,
+        };
+        if (chosenRole && activeProfile.role !== chosenRole) {
+          activeProfile.role = chosenRole;
           await setDoc(userDocRef, removeUndefinedFields({ role: chosenRole }), { merge: true });
         }
-        setCurrentUser(profile);
       } else {
         const fallbackRole = chosenRole || 'farmer';
-        const initialProfile: UserProfile = {
+        const nameFromEmail = (user.email || cleanEmail).split('@')[0];
+        activeProfile = {
           id: user.uid,
-          name: user.displayName || user.email?.split('@')[0] || 'KrishiQuant Member',
-          email: user.email || '',
+          name: user.displayName || nameFromEmail,
+          email: user.email || cleanEmail,
           role: fallbackRole,
           ...(fallbackRole === 'farmer' 
-            ? { farmName: 'My Agro Farm & Cultivation' } 
+            ? { farmName: `${nameFromEmail}'s Agro Farm` } 
             : fallbackRole === 'fpo' 
-            ? { orgName: 'My FPO Producer Co-op' } 
-            : { orgName: 'Agri Procurement Division' }),
-          location: 'Nashik, Maharashtra',
+            ? { orgName: `${nameFromEmail} Farmer Co-op` } 
+            : { orgName: `${nameFromEmail} Agri Traders` }),
+          location: 'Nashik Agro Hub, Maharashtra',
           verified: true,
           rating: 5.0,
           totalDeals: 0,
+          avatarUrl: user.photoURL || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80',
         };
-        await setDoc(userDocRef, removeUndefinedFields(initialProfile), { merge: true });
-        setCurrentUser(initialProfile);
+        await setDoc(userDocRef, removeUndefinedFields(activeProfile), { merge: true });
       }
+
+      setCurrentUser(activeProfile);
+      try {
+        localStorage.setItem('agritech_current_user', JSON.stringify(activeProfile));
+        saveRegisteredAccount(activeProfile, pass);
+      } catch {}
     } catch (err: any) {
       console.warn('Firebase Email Sign-In issue:', err?.code || err?.message);
 
-      // Check if user credentials match demo users
-      const lowerEmail = email.toLowerCase();
-      if (lowerEmail.includes('farmer') || lowerEmail.includes('patil')) {
-        signInAsDemoRole('farmer');
-        return;
-      }
-      if (lowerEmail.includes('fpo') || lowerEmail.includes('sahyadri')) {
-        signInAsDemoRole('fpo');
-        return;
-      }
-      if (lowerEmail.includes('itc') || lowerEmail.includes('singhania') || lowerEmail.includes('enterprise')) {
-        signInAsDemoRole('organisation');
-        return;
-      }
-      if (lowerEmail.includes('buyer') || lowerEmail.includes('rasoi') || lowerEmail.includes('sharma')) {
-        signInAsDemoRole('individual');
+      // Check if user account was created in local registry
+      const registeredAccounts = getRegisteredAccounts();
+      const localAccount = registeredAccounts[lowerEmail];
+      if (localAccount) {
+        if (localAccount.passHash && localAccount.passHash !== pass) {
+          throw new Error('auth/wrong-password');
+        }
+        const profile = { ...localAccount.profile };
+        if (chosenRole) {
+          profile.role = chosenRole;
+        }
+        setCurrentUser(profile);
+        try {
+          localStorage.setItem('agritech_current_user', JSON.stringify(profile));
+        } catch {}
         return;
       }
 
-      // Check if user was registered locally or in demo storage
+      // Check if user was saved in agritech_current_user matching this exact typed email
       const savedUserStr = localStorage.getItem('agritech_current_user');
       if (savedUserStr) {
         try {
           const savedUser = JSON.parse(savedUserStr);
-          if (savedUser.email?.toLowerCase() === lowerEmail) {
+          if (savedUser.email?.toLowerCase() === lowerEmail && !isDemoUser(savedUser)) {
             if (chosenRole) savedUser.role = chosenRole;
             setCurrentUser(savedUser);
             return;
@@ -287,12 +355,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch {}
       }
 
-      // If user selected a role in the login UI, support simulated offline sign-in
-      if (chosenRole) {
-        signInAsDemoRole(chosenRole);
-        return;
+      // NEVER EVER log in as demo user if credentials fail! Throw clear error.
+      if (
+        err?.code === 'auth/user-not-found' || 
+        err?.code === 'auth/invalid-credential' || 
+        err?.message?.includes('user-not-found') ||
+        err?.message?.includes('invalid-credential')
+      ) {
+        throw new Error('auth/user-not-found');
       }
-
       throw err;
     }
   };
@@ -306,21 +377,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     orgOrFarmName?: string, 
     phone?: string
   ) => {
+    const cleanEmail = (email || '').trim();
+    const cleanName = (name || '').trim();
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
       const user = userCredential.user;
-      await updateProfile(user, { displayName: name });
+      await updateProfile(user, { displayName: cleanName });
 
       const newProfile: UserProfile = {
         id: user.uid,
-        name,
-        email,
+        name: cleanName,
+        email: cleanEmail,
         role,
         ...(role === 'farmer' 
-          ? { farmName: orgOrFarmName?.trim() || `${name}'s Farm` } 
+          ? { farmName: orgOrFarmName?.trim() || `${cleanName}'s Farm` } 
           : role === 'fpo'
-          ? { orgName: orgOrFarmName?.trim() || `${name} Farmer Producer Co-op` }
-          : { orgName: orgOrFarmName?.trim() || `${name} Agri Corp` }),
+          ? { orgName: orgOrFarmName?.trim() || `${cleanName} Farmer Producer Co-op` }
+          : { orgName: orgOrFarmName?.trim() || `${cleanName} Agri Corp` }),
         location: location || (role === 'farmer' ? 'Nashik Agro Belt, Maharashtra' : 'Vashi Mandi Hub, Navi Mumbai'),
         phone: phone || '+91 98000 00000',
         verified: true,
@@ -336,22 +410,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Save to Firestore without any undefined properties
       await setDoc(doc(db, 'users', user.uid), removeUndefinedFields(newProfile), { merge: true });
       setCurrentUser(newProfile);
+      try {
+        localStorage.setItem('agritech_current_user', JSON.stringify(newProfile));
+        saveRegisteredAccount(newProfile, pass);
+      } catch {}
     } catch (err: any) {
       console.warn('Firebase Email Sign-Up issue:', err?.code || err?.message);
       
-      // If Email provider is not enabled in Firebase Console (auth/operation-not-allowed)
-      if (err?.code === 'auth/operation-not-allowed' || err?.message?.includes('operation-not-allowed')) {
+      // If Email provider is not enabled in Firebase Console (auth/operation-not-allowed) or offline
+      if (
+        err?.code === 'auth/operation-not-allowed' || 
+        err?.message?.includes('operation-not-allowed') ||
+        err?.code === 'auth/network-request-failed'
+      ) {
         const localUserId = `user_${Date.now()}`;
         const fallbackProfile: UserProfile = {
           id: localUserId,
-          name,
-          email,
+          name: cleanName,
+          email: cleanEmail,
           role,
           ...(role === 'farmer' 
-            ? { farmName: orgOrFarmName?.trim() || `${name}'s Farm` } 
+            ? { farmName: orgOrFarmName?.trim() || `${cleanName}'s Farm` } 
             : role === 'fpo'
-            ? { orgName: orgOrFarmName?.trim() || `${name} Farmer Producer Co-op` }
-            : { orgName: orgOrFarmName?.trim() || `${name} Agri Corp` }),
+            ? { orgName: orgOrFarmName?.trim() || `${cleanName} Farmer Producer Co-op` }
+            : { orgName: orgOrFarmName?.trim() || `${cleanName} Agri Corp` }),
           location: location || (role === 'farmer' ? 'Nashik Agro Belt, Maharashtra' : 'Vashi Mandi Hub, Navi Mumbai'),
           phone: phone || '+91 98000 00000',
           verified: true,
@@ -372,6 +454,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(fallbackProfile);
         try {
           localStorage.setItem('agritech_current_user', JSON.stringify(fallbackProfile));
+          saveRegisteredAccount(fallbackProfile, pass);
         } catch {}
         return;
       }

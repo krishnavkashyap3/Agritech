@@ -38,7 +38,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const { 
     signInWithEmail, 
-    signInAsDemoRole,
     signUpWithEmail, 
     resetPassword,
   } = useAuth();
@@ -70,19 +69,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setTimeout(() => {
         onSuccess();
       }, 100);
-    }
-  };
-
-  const handleQuickDemoLogin = (roleToLogin: UserRole) => {
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      signInAsDemoRole(roleToLogin);
-      handleSuccess();
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Quick login failed');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -404,44 +390,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
           </div>
         </div>
-
-        {/* Quick 1-Click Fast Sign-In Shortcut Cards for Immediate Verification */}
-        {mode === 'signin' && (
-          <div className="bg-[#F3EFE6] border border-[#E5DECF] rounded-2xl p-3 space-y-2">
-            <div className="flex items-center justify-between text-[11px] text-[#5C554B]">
-              <span className="font-bold text-[#1C1C1C]">Instant 1-Click Role Sign In:</span>
-              <span className="text-[10px]">Test permissions easily</span>
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('farmer')}
-                className="py-1.5 px-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 shadow-xs transition"
-              >
-                <Sprout className="w-3 h-3 text-amber-200" />
-                <span>As Farmer</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('fpo')}
-                className="py-1.5 px-2 bg-[#8C6B3D] hover:bg-[#785930] text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 shadow-xs transition"
-              >
-                <Building2 className="w-3 h-3 text-amber-200" />
-                <span>As FPO</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('individual')}
-                className="py-1.5 px-2 bg-[#3B5B7D] hover:bg-[#2F4A66] text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 shadow-xs transition"
-              >
-                <ShoppingBag className="w-3 h-3 text-amber-200" />
-                <span>As Buyer</span>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Main Email/Password Form */}
         <form onSubmit={handleEmailSubmit} className="space-y-3 pt-1">
