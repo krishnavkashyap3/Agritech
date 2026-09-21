@@ -53,7 +53,7 @@ export const CreateListingModal: React.FC<CreateListingModalProps> = ({
       .filter(Boolean);
 
     const newLot: CropListing = {
-      id: `lot-${Date.now()}`,
+      id: `lot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       farmerId: currentUser.id,
       farmerName: currentUser.farmName || currentUser.name,
       farmerPhone: farmerPhone.trim() || currentUser.phone || '+91 98765 43210',

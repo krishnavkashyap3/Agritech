@@ -52,7 +52,7 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
 
     const ticketNumber = `GRV-AGRI-${Math.floor(100000 + Math.random() * 900000)}`;
     const newComplaint: UserComplaint = {
-      id: `complaint-${Date.now()}`,
+      id: `complaint-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       ticketNumber,
       userName: name.trim() || 'Anonymous User',
       userContact: contact.trim() || 'No contact provided',

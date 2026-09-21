@@ -83,7 +83,7 @@ export const DeliveryAddressModal: React.FC<DeliveryAddressModalProps> = ({
     if (!validate()) return;
 
     const newAddress: DeliveryAddress = {
-      id: initialAddress?.id || `addr-${Date.now()}`,
+      id: initialAddress?.id || `addr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       label: label.trim() || `${city} ${locationType}`,
       consigneeName,
       companyName: companyName.trim() || undefined,

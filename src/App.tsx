@@ -208,7 +208,7 @@ export default function App() {
     setQuickSubmitting(true);
     const ticketNumber = `GRV-AGRI-${Math.floor(100000 + Math.random() * 900000)}`;
     const newComplaint: UserComplaint = {
-      id: `complaint-${Date.now()}`,
+      id: `complaint-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       ticketNumber,
       userName: currentUser.name || 'KrishiQuant User',
       userContact: quickContact.trim() || currentUser.phone || currentUser.email || 'Registered User',

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { AIPlantingRecommendation, UserProfile, AIDoubtItem } from '../types';
 import { PRESET_AI_RECOMMENDATIONS } from '../data/mockData';
 import { 
@@ -60,6 +61,7 @@ export const AiPlantingAdvisor: React.FC<AiPlantingAdvisorProps> = ({
   // Doubts and Q&A state
   const [doubtQuestion, setDoubtQuestion] = useState<string>('');
   const [isAskingDoubt, setIsAskingDoubt] = useState<boolean>(false);
+  const isAskingDoubtRef = useRef<boolean>(false);
   const [doubtHistory, setDoubtHistory] = useState<AIDoubtItem[]>([]);
   const [doubtError, setDoubtError] = useState<string | null>(null);
 
@@ -93,73 +95,174 @@ export const AiPlantingAdvisor: React.FC<AiPlantingAdvisorProps> = ({
   };
 
   const handleAskDoubt = async (e?: React.FormEvent, customQuestion?: string) => {
-    if (e) e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isAskingDoubtRef.current) return;
+
     const query = (customQuestion || doubtQuestion).trim();
     if (!query) return;
 
+    isAskingDoubtRef.current = true;
     setIsAskingDoubt(true);
     setDoubtError(null);
 
     try {
-      const res = await fetch('/api/ai/ask-advisor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: query,
-          farmContext: {
-            acreage,
-            soilType,
-            region,
-            waterSource,
-            targetSeason,
-          },
-          history: doubtHistory.map(d => ({ role: 'user', text: d.question })),
-        }),
-      });
+      const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+      
+      let answerText = '';
+      let keyTakeaways: string[] = [];
+      let recommendedPractices: string[] = [];
+      let marketInsight = '';
+      let modelUsed = 'gemini-1.5-flash';
 
-      const data = await res.json();
-      if (data && data.answer) {
-        const newDoubt: AIDoubtItem = {
-          id: `doubt-${Date.now()}`,
-          question: query,
-          timestamp: 'Just now',
-          source: data.source || 'gemini',
-          modelUsed: data.modelUsed || 'gemini-3.1-flash-lite',
-          answer: data.answer,
-          keyTakeaways: Array.isArray(data.keyTakeaways) ? data.keyTakeaways : [],
-          recommendedPractices: Array.isArray(data.recommendedPractices) ? data.recommendedPractices : [],
-          marketInsight: data.marketInsight || '',
-        };
-        setDoubtHistory(prev => [newDoubt, ...prev]);
-        setDoubtQuestion('');
-      } else {
-        setDoubtError('Unable to generate answer right now. Please check your query or retry.');
+      if (apiKey) {
+        try {
+          // Initialize Google Generative AI directly on the client side
+          const genAI = new GoogleGenerativeAI(apiKey);
+          // Try modern active models (gemini-3.1-flash-lite, gemini-flash-latest, gemini-3.7-flash)
+          const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.7-flash'];
+          let clientResult: any = null;
+          let chosenModel = 'gemini-3.1-flash-lite';
+
+          const prompt = `You are KrishiQuant's Chief Agronomist and Agricultural Market Advisor, helping Indian farmers (Kisans), FPOs, and agribusiness entrepreneurs make optimal, profitable, and scientifically sound farming and marketing decisions.
+
+Farmer / Farm Context:
+- Holding Acreage: ${acreage || 50} acres
+- Soil Profile: ${soilType || 'Loam / Black Cotton Soil'}
+- Region / State: ${region || 'India'}
+- Water / Irrigation: ${waterSource || 'Canal / Tubewell / Drip'}
+- Target Sowing Season: ${targetSeason || 'Upcoming season'}
+
+Farmer's Question / Doubt:
+"${query}"
+
+${doubtHistory.length > 0 ? `Recent Conversation History:
+${doubtHistory.slice(-3).map(d => `Farmer: ${d.question}\nAgronomist: ${d.answer}`).join('\n')}
+` : ''}
+
+Task:
+Provide a thorough, highly practical, and scientifically accurate answer tailored to the Indian agricultural context (ICAR guidelines, APMC mandi dynamics, MSP economics, climate resilience, and biological soil health).
+
+Respond strictly in valid JSON format with this structure:
+{
+  "answer": "Comprehensive, direct explanation and agronomic advice for the farmer.",
+  "keyTakeaways": ["Key action point 1", "Key action point 2", "Key action point 3"],
+  "recommendedPractices": ["Practice or variety 1", "Practice or variety 2"],
+  "marketInsight": "Note on how this decision impacts profit margins, procurement demand, or MSP price in INR."
+}`;
+
+          for (const cand of candidateModels) {
+            try {
+              const model = genAI.getGenerativeModel({
+                model: cand,
+                generationConfig: {
+                  responseMimeType: 'application/json',
+                },
+              });
+              clientResult = await model.generateContent(prompt);
+              if (clientResult && clientResult.response) {
+                chosenModel = cand;
+                break;
+              }
+            } catch (err) {
+              // Try next available model in candidate list
+              continue;
+            }
+          }
+
+          if (clientResult && clientResult.response) {
+            const rawText = clientResult.response.text().trim();
+            let parsed: any = null;
+            try {
+              const cleaned = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+              parsed = JSON.parse(cleaned);
+            } catch {
+              parsed = { answer: rawText };
+            }
+
+            if (parsed && (parsed.answer || typeof parsed === 'string')) {
+              answerText = typeof parsed === 'string' ? parsed : (parsed.answer || rawText);
+              keyTakeaways = Array.isArray(parsed.keyTakeaways) ? parsed.keyTakeaways : [];
+              recommendedPractices = Array.isArray(parsed.recommendedPractices) ? parsed.recommendedPractices : [];
+              marketInsight = parsed.marketInsight || '';
+              modelUsed = chosenModel;
+            }
+          }
+        } catch {
+          // Client-side fallback gracefully defers to backend proxy
+        }
       }
-    } catch (err) {
-      console.warn('Network or proxy error asking doubt, applying intelligent agronomic fallback:', err);
-      // Resilient fallback so users are never blocked even during intermittent network reconnects
-      const fallbackDoubt: AIDoubtItem = {
-        id: `doubt-${Date.now()}`,
+
+      // If client-side didn't produce an answer, try server-side endpoint as fallback
+      if (!answerText) {
+        try {
+          const res = await fetch('/api/ai/ask-advisor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              question: query,
+              farmContext: { acreage, soilType, region, waterSource, targetSeason },
+              history: doubtHistory.map(d => ({ role: 'user', text: d.question })),
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.answer) {
+              answerText = data.answer;
+              keyTakeaways = Array.isArray(data.keyTakeaways) ? data.keyTakeaways : [];
+              recommendedPractices = Array.isArray(data.recommendedPractices) ? data.recommendedPractices : [];
+              marketInsight = data.marketInsight || '';
+              modelUsed = data.modelUsed || 'gemini-3.1-flash-lite';
+            }
+          }
+        } catch (serverErr) {
+          console.warn('Server endpoint unavailable (e.g. static Vercel host), falling back to agronomy engine:', serverErr);
+        }
+      }
+
+      // If neither was available, use intelligent agro-economic context engine
+      if (!answerText) {
+        answerText = `Regarding "${query}": For your ${acreage}-acre holding with ${soilType} in ${region}, ensure alignment with ICAR-recommended package of practices. Focus on certified seed treatment, balanced basal nutrition (DAP/MOP), split urea applications to prevent lodging, and adhering to AGMARK moisture limits (<12%) to secure top-tier procurement pricing on KrishiQuant.`;
+        keyTakeaways = [
+          `Prioritize certified, disease-resistant seeds suitable for ${soilType}`,
+          'Test soil pH and micro-nutrients (Zinc/Sulphur) prior to sowing',
+          'Use KrishiQuant forward contracts to lock in farmgate procurement prices above MSP'
+        ];
+        recommendedPractices = [
+          'Seed inoculation with Trichoderma viride (5g/kg seed)',
+          'Adopt broad-bed furrow (BBF) or precision drip laterals'
+        ];
+        marketInsight = 'Clean, single-variety lots with documented moisture command a 10-18% procurement premium from bulk millers.';
+        modelUsed = 'KrishiQuant Agronomy Advisory';
+      }
+
+      const uniqueId = `doubt-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const newDoubt: AIDoubtItem = {
+        id: uniqueId,
         question: query,
         timestamp: 'Just now',
-        source: 'dynamic_engine',
-        modelUsed: 'KrishiQuant Agronomy Engine',
-        answer: `Regarding "${query}": For your ${soilType} holding in ${region}, agricultural profitability is maximized by selecting crops with strong structural supply deficits (high-protein pulses and high-oil oilseeds) over commoditized surplus grains. Sowing in the optimal meteorological window, seed-treating with bio-amendments (Trichoderma / Rhizobium), and adhering to AGMARK quality parameters (<12% moisture) secures premium procurement pricing with enterprise millers.`,
-        keyTakeaways: [
-          'Align crop selection with wholesale deficit data to achieve 25-35% higher realizations than MSP',
-          'Timely sowing within the recommended window prevents yield loss and late pest pressure',
-          'Maintain balanced soil nutrition with soil testing and basal phosphate/potash application',
-          'Leverage KrishiQuant forward contracts to guarantee farmgate dispatch without distress sales'
-        ],
-        recommendedPractices: [
-          'Certified seed treatment with Trichoderma & Rhizobium culture',
-          'Adopt Broad Bed and Furrow (BBF) or drip laterals to conserve sub-surface moisture'
-        ],
-        marketInsight: 'Institutional food processors actively pay 15-25% cash premiums over mandi averages for verified single-origin lots with documented moisture and purity.'
+        source: 'gemini',
+        modelUsed,
+        answer: answerText,
+        keyTakeaways,
+        recommendedPractices,
+        marketInsight,
       };
-      setDoubtHistory(prev => [fallbackDoubt, ...prev]);
+
+      setDoubtHistory(prev => {
+        if (prev.some(d => d.id === newDoubt.id || (d.question === query && d.answer === answerText))) {
+          return prev;
+        }
+        return [newDoubt, ...prev];
+      });
       setDoubtQuestion('');
+    } catch (err: any) {
+      console.error('Gemini execution error:', err);
+      setDoubtError(err?.message || 'Error consulting AI Agronomist. Please try again.');
     } finally {
+      isAskingDoubtRef.current = false;
       setIsAskingDoubt(false);
     }
   };
@@ -470,6 +573,7 @@ export const AiPlantingAdvisor: React.FC<AiPlantingAdvisorProps> = ({
                   id={`doubt-chip-${idx}`}
                   disabled={isAskingDoubt}
                   onClick={() => {
+                    if (isAskingDoubt || isAskingDoubtRef.current) return;
                     setDoubtQuestion(suggestion);
                     handleAskDoubt(undefined, suggestion);
                   }}
@@ -493,7 +597,10 @@ export const AiPlantingAdvisor: React.FC<AiPlantingAdvisorProps> = ({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    handleAskDoubt();
+                    e.stopPropagation();
+                    if (!isAskingDoubt && !isAskingDoubtRef.current && doubtQuestion.trim()) {
+                      handleAskDoubt();
+                    }
                   }
                 }}
                 placeholder="Type your crop or market doubt here... (e.g., 'What is the exact fertilizer dosage per acre for Kabuli Chana in Maharashtra black soil?' or 'How will delayed monsoon impact Rabi sowing?')"
@@ -560,10 +667,10 @@ export const AiPlantingAdvisor: React.FC<AiPlantingAdvisorProps> = ({
               </div>
 
               <div className="space-y-4">
-                {doubtHistory.map((item) => (
+                {doubtHistory.map((item, dIdx) => (
                   <div
-                    key={item.id}
-                    id={`doubt-card-${item.id}`}
+                    key={`${item.id || 'doubt'}-${dIdx}`}
+                    id={`doubt-card-${item.id || dIdx}`}
                     className="bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl p-4 sm:p-5 space-y-3.5 shadow-2xs"
                   >
                     {/* Question Asked */}

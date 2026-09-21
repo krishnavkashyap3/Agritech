@@ -165,7 +165,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const handleAddNewAddress = (e: React.FormEvent) => {
     e.preventDefault();
     const newAddr: DeliveryAddress = {
-      id: `addr-${Date.now()}`,
+      id: `addr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       label: newAddrLabel.trim() || `${newCity} ${newLocationType}`,
       consigneeName: newConsigneeName,
       companyName: newCompanyName,

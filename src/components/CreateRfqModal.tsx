@@ -26,7 +26,7 @@ export const CreateRfqModal: React.FC<CreateRfqModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newRfq: BuyOrderRFQ = {
-      id: `rfq-${Date.now()}`,
+      id: `rfq-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       buyerId: currentUser.id,
       buyerName: currentUser.orgName || currentUser.name,
       buyerType: currentUser.role === 'individual' ? 'individual' : 'organisation',
