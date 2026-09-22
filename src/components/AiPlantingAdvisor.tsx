@@ -4,7 +4,6 @@ import { AIPlantingRecommendation, UserProfile, AIDoubtItem } from '../types';
 import { PRESET_AI_RECOMMENDATIONS } from '../data/mockData';
 import { 
   Sparkles, 
-  Sprout, 
   TrendingUp, 
   AlertTriangle, 
   Droplets, 
@@ -14,8 +13,6 @@ import {
   Building2, 
   ArrowRight,
   ShieldCheck,
-  RotateCcw,
-  Zap,
   HelpCircle,
   Send,
   Loader2,
@@ -49,14 +46,7 @@ export const AiPlantingAdvisor: React.FC<AiPlantingAdvisorProps> = ({
   const [waterSource, setWaterSource] = useState<string>('Canal & Drip Irrigation');
   const [targetSeason, setTargetSeason] = useState<string>('Upcoming Spring Planting Cycle');
   
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [recommendations, setRecommendations] = useState<AIPlantingRecommendation[]>(PRESET_AI_RECOMMENDATIONS);
-  const [marketSummary, setMarketSummary] = useState<string>(
-    'Current agricultural commodity models detect an acute deficit in plant protein pulses and non-GMO high-oleic oilseeds due to surging industrial processing demand and depleted commercial carryover stocks.'
-  );
-  const [glutWarning, setGlutWarning] = useState<string>(
-    'Warning: Standard yellow field feed corn and uncontracted commodity white potatoes exhibit high regional surplus inventory. Planting without forward contracts carries high price degradation risk.'
-  );
 
   // Doubts and Q&A state
   const [doubtQuestion, setDoubtQuestion] = useState<string>('');
@@ -64,35 +54,6 @@ export const AiPlantingAdvisor: React.FC<AiPlantingAdvisorProps> = ({
   const isAskingDoubtRef = useRef<boolean>(false);
   const [doubtHistory, setDoubtHistory] = useState<AIDoubtItem[]>([]);
   const [doubtError, setDoubtError] = useState<string | null>(null);
-
-  const handleGenerateAdvice = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/ai/planting-advice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          acreage,
-          soilType,
-          region,
-          waterSource,
-          targetSeason,
-          existingExperience: 'Commercial production',
-        }),
-      });
-      const data = await res.json();
-      if (data && data.success && data.recommendations && data.recommendations.length > 0) {
-        setRecommendations(data.recommendations);
-        if (data.marketSummary) setMarketSummary(data.marketSummary);
-        if (data.glutWarning) setGlutWarning(data.glutWarning);
-      }
-    } catch (err) {
-      console.warn('Network issue fetching AI advice, retaining current market model:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleAskDoubt = async (e?: React.FormEvent, customQuestion?: string) => {
     if (e) {
@@ -286,120 +247,6 @@ Respond strictly in valid JSON format with this structure:
           </h1>
           <p className="text-[#D0C8BB] text-xs sm:text-sm leading-relaxed max-w-2xl font-normal">
             Our AI model cross-references wholesale buyer procurement deficits, regional soil dynamics, and industrial processing trends to recommend high-ROI crops and warn against over-supplied market gluts.
-          </p>
-        </div>
-      </div>
-
-      {/* Input Farm Profile Form */}
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#E8E5DF] shadow-xs space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#F0ECE1]">
-          <h2 className="text-sm sm:text-base font-serif font-bold text-[#1C1C1C] flex items-center gap-2">
-            <Sprout className="w-5 h-5 text-[#2D4F38]" />
-            Customize Farm Conditions & Soil Parameters
-          </h2>
-          <span className="text-xs text-[#8A847A] font-medium font-mono">Real-time personalized calculation</span>
-        </div>
-
-        <form onSubmit={handleGenerateAdvice} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 text-xs">
-          <div>
-            <label className="block text-[#5C554B] font-semibold mb-1">Total Acreage (Acres)</label>
-            <input
-              type="number"
-              id="ai-acreage-input"
-              min={1}
-              value={acreage}
-              onChange={(e) => setAcreage(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-[#FAF9F6] border border-[#D5CCBD] rounded-lg font-mono font-semibold text-[#1C1C1C] focus:ring-2 focus:ring-[#2D4F38] focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[#5C554B] font-semibold mb-1">Dominant Soil Type</label>
-            <select
-              id="ai-soil-select"
-              value={soilType}
-              onChange={(e) => setSoilType(e.target.value)}
-              className="w-full px-3 py-2 bg-[#FAF9F6] border border-[#D5CCBD] rounded-lg text-[#1C1C1C] font-medium focus:ring-2 focus:ring-[#2D4F38] focus:outline-none"
-            >
-              <option value="Well-drained Loam">Well-drained Loam</option>
-              <option value="Clay Loam / Heavy Clay">Clay Loam / Heavy Clay</option>
-              <option value="Sandy Loam">Sandy Loam</option>
-              <option value="Alluvial Riverine Soil">Alluvial Riverine Soil</option>
-              <option value="Black Cotton / Volcanic">Black Soil / Volcanic</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[#5C554B] font-semibold mb-1">Region / Climate Zone</label>
-            <input
-              type="text"
-              id="ai-region-input"
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              className="w-full px-3 py-2 bg-[#FAF9F6] border border-[#D5CCBD] rounded-lg text-[#1C1C1C] font-medium focus:ring-2 focus:ring-[#2D4F38] focus:outline-none"
-              placeholder="e.g. Midwest, California Valley, Ontario"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[#5C554B] font-semibold mb-1">Water & Irrigation Access</label>
-            <select
-              id="ai-water-select"
-              value={waterSource}
-              onChange={(e) => setWaterSource(e.target.value)}
-              className="w-full px-3 py-2 bg-[#FAF9F6] border border-[#D5CCBD] rounded-lg text-[#1C1C1C] font-medium focus:ring-2 focus:ring-[#2D4F38] focus:outline-none"
-            >
-              <option value="Canal & Drip Irrigation">Canal & Drip Irrigation</option>
-              <option value="Borewell / Ground Pump">Borewell / Ground Pump</option>
-              <option value="Rainfed / Moderate Rainfall">Rainfed / Moderate Rainfall</option>
-              <option value="Arid / Limited Water">Arid / Limited Water</option>
-            </select>
-          </div>
-
-          <div className="flex items-end">
-            <button
-              type="submit"
-              id="run-ai-advisor-btn"
-              disabled={isLoading}
-              className="w-full py-2.5 px-4 bg-[#C2593F] hover:bg-[#A84A33] disabled:bg-[#D5CCBD] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs border border-[#D97259]"
-            >
-              {isLoading ? (
-                <>
-                  <RotateCcw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Analyzing Market Gaps...</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="w-3.5 h-3.5 text-amber-200" />
-                  <span>Run AI Advisor</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Market Guts & Glut Warning Alerts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Market Deficit Opportunity */}
-        <div className="bg-[#EBF3ED] border border-[#C6DFC9] rounded-2xl p-4 sm:p-5 space-y-2">
-          <div className="flex items-center gap-2 text-[#233B2B] font-bold text-xs uppercase tracking-wider font-serif">
-            <TrendingUp className="w-4 h-4 text-[#2D4F38]" />
-            <span>Market Deficit & High-Margin Opportunity</span>
-          </div>
-          <p className="text-xs text-[#3D3830] leading-relaxed font-normal">
-            {marketSummary}
-          </p>
-        </div>
-
-        {/* Glut / Over-Supply Warning */}
-        <div className="bg-[#FDF2F0] border border-[#F5C7C0] rounded-2xl p-4 sm:p-5 space-y-2">
-          <div className="flex items-center gap-2 text-[#8C3420] font-bold text-xs uppercase tracking-wider font-serif">
-            <AlertTriangle className="w-4 h-4 text-[#C2593F]" />
-            <span>Glut Risk: Crops with Projected Surplus</span>
-          </div>
-          <p className="text-xs text-[#3D3830] leading-relaxed font-normal">
-            {glutWarning}
           </p>
         </div>
       </div>
