@@ -18,7 +18,8 @@ import {
   query, 
   where, 
   orderBy, 
-  addDoc 
+  addDoc,
+  serverTimestamp 
 } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
 import { UserProfile, UserRole, OrderTransaction, UserComplaint } from '../types';
@@ -224,8 +225,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [firebaseUser, currentUser.id]);
 
-  // Listen to Firestore Complaints in real-time
+  // Listen to Firestore Complaints in real-time only when admin is signed in
   useEffect(() => {
+    if (firebaseUser?.email?.toLowerCase() !== 'aryan@gmail.com') {
+      return;
+    }
+
     try {
       const complaintsRef = collection(db, 'complaints');
       const unsubComplaints = onSnapshot(complaintsRef, (snapshot) => {
@@ -240,14 +245,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setFirestoreComplaints(list);
         }
       }, (_err) => {
-        // Quietly maintain local state during offline periods
+        // Quietly maintain local state during offline or restricted periods
       });
 
       return () => unsubComplaints();
     } catch (_e) {
       // Quietly fall back
     }
-  }, []);
+  }, [firebaseUser?.email]);
 
   const signInAsDemoRole = (role: UserRole) => {
     let targetUser: UserProfile;
@@ -353,6 +358,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
         } catch {}
+      }
+
+      // For the designated admin account aryan@gmail.com with password 456123,
+      // if account not yet provisioned in Firebase Auth, automatically create it
+      if (lowerEmail === 'aryan@gmail.com') {
+        if (pass === '456123') {
+          try {
+            await createUserWithEmailAndPassword(auth, 'aryan@gmail.com', '456123');
+            return;
+          } catch (createErr: any) {
+            console.warn('Admin provisioning notice:', createErr?.message);
+          }
+        } else {
+          throw new Error('auth/wrong-password');
+        }
       }
 
       // NEVER EVER log in as demo user if credentials fail! Throw clear error.
@@ -520,8 +540,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const saveComplaintToFirestore = async (complaint: UserComplaint) => {
     try {
+      const contactStr = complaint.userContact || '';
+      const emailFromContact = contactStr.includes('@') ? contactStr.trim() : '';
       const complaintPayload = {
         ...complaint,
+        userEmail: emailFromContact || currentUser.email || (currentUser.name ? `${currentUser.name.replace(/\s+/g, '').toLowerCase()}@krishiquant.in` : 'farmer@krishiquant.in'),
+        category: complaint.issueCategory || 'General Dispute',
+        issueCategory: complaint.issueCategory || 'General Dispute',
+        subject: complaint.subject || 'Platform Grievance',
+        description: complaint.description || complaint.subject || 'Grievance ticket registered',
+        status: complaint.status || 'Open',
+        timestamp: serverTimestamp(),
         userId: firebaseUser ? firebaseUser.uid : (currentUser.id || 'guest-user'),
         userRole: currentUser.role || 'farmer',
         updatedAt: new Date().toISOString(),

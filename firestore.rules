@@ -37,13 +37,12 @@ service cloud.firestore {
 
     // Complaints & Grievance tickets collection
     match /complaints/{complaintId} {
-      // Allow anyone (farmers, buyers, visitors) to submit grievance tickets
+      // Allow anyone (unauthenticated or authenticated) to submit a complaint
       allow create: if true;
-      // Allow reading complaints for tracking
-      allow read: if true;
-      // Allow updates to complaints
-      allow update: if true;
-      allow delete: if isAuthenticated();
+      // Read operations restricted strictly to admin email aryan@gmail.com
+      allow read: if request.auth != null && request.auth.token.email == "aryan@gmail.com";
+      // Management operations restricted strictly to admin email aryan@gmail.com
+      allow update, delete: if request.auth != null && request.auth.token.email == "aryan@gmail.com";
     }
     
     // Listings: Only users registered as farmers can create or modify harvest crop listings

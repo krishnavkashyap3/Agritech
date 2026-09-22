@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ResponsiveContainer, 
   AreaChart, 
@@ -37,7 +37,11 @@ import {
   CheckCircle2, 
   RefreshCw,
   SlidersHorizontal,
-  Info
+  Info,
+  AlertCircle,
+  KeyRound,
+  ExternalLink,
+  X
 } from 'lucide-react';
 
 interface LiveMarketSectionProps {
@@ -63,6 +67,23 @@ export const LiveMarketSection: React.FC<LiveMarketSectionProps> = ({
   // Tab state
   const [activeTab, setActiveTab] = useState<MarketTab>('commodity');
 
+  // Real-time Commodities & data.gov.in status
+  const [commodities, setCommodities] = useState<LiveCommodityData[]>(LIVE_COMMODITIES);
+  const [apiStatus, setApiStatus] = useState<{
+    configured: boolean;
+    isRealTime: boolean;
+    source: string;
+    syncTimestamp?: string;
+    recordCount?: number;
+    message?: string;
+    warning?: string;
+    resourceId?: string;
+  }>({
+    configured: false,
+    isRealTime: false,
+    source: 'calibrated_baseline'
+  });
+
   // Commodity View state
   const [selectedCropId, setSelectedCropId] = useState<string>(initialCommodityId);
   const [cropSearchQuery, setCropSearchQuery] = useState<string>('');
@@ -75,11 +96,85 @@ export const LiveMarketSection: React.FC<LiveMarketSectionProps> = ({
   const [overviewSearch, setOverviewSearch] = useState<string>('');
   const [activeInsightIndex, setActiveInsightIndex] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [showApiModal, setShowApiModal] = useState<boolean>(false);
+  const [isTestingApi, setIsTestingApi] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleTestConnection = async () => {
+    setIsTestingApi(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/market/live-commodities?refresh=true');
+      const data = await res.json();
+      if (data.isRealTime) {
+        setTestResult({
+          success: true,
+          message: `Live Feed Active! Synchronized ${data.recordCount} APMC Mandi daily records directly from data.gov.in.`
+        });
+        if (data.commodities && Array.isArray(data.commodities)) {
+          setCommodities(data.commodities);
+        }
+        setApiStatus({
+          configured: !!data.configured,
+          isRealTime: true,
+          source: 'data.gov.in',
+          syncTimestamp: data.syncTimestamp,
+          recordCount: data.recordCount,
+          message: data.message,
+          resourceId: data.resourceId,
+        });
+      } else {
+        setTestResult({
+          success: false,
+          message: data.warning || data.message || 'Key not authorised or not configured on data.gov.in.'
+        });
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: `Network error connecting to API: ${err?.message || 'Server did not respond'}`
+      });
+    } finally {
+      setIsTestingApi(false);
+    }
+  };
+
+  // Sync with /api/market/live-commodities on mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchMarketFeed = async () => {
+      try {
+        const res = await fetch('/api/market/live-commodities');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMounted && data.commodities && Array.isArray(data.commodities)) {
+          setCommodities(data.commodities);
+          setApiStatus({
+            configured: !!data.configured,
+            isRealTime: !!data.isRealTime,
+            source: data.source || 'calibrated_baseline',
+            syncTimestamp: data.syncTimestamp,
+            recordCount: data.recordCount,
+            message: data.message,
+            warning: data.warning || (!data.isRealTime ? data.message : undefined),
+            resourceId: data.resourceId,
+          });
+        }
+      } catch (err) {
+        console.warn('Network issue fetching live Agmarknet commodities feed:', err);
+      }
+    };
+
+    fetchMarketFeed();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Selected commodity object
   const currentCommodity: LiveCommodityData = useMemo(() => {
-    return LIVE_COMMODITIES.find((c) => c.id === selectedCropId) || LIVE_COMMODITIES[0];
-  }, [selectedCropId]);
+    return commodities.find((c) => c.id === selectedCropId) || commodities[0] || LIVE_COMMODITIES[0];
+  }, [selectedCropId, commodities]);
 
   // Unique states for selected commodity
   const availableStates = useMemo(() => {
@@ -107,17 +202,17 @@ export const LiveMarketSection: React.FC<LiveMarketSectionProps> = ({
 
   // Filtered commodities for search dropdown
   const searchMatchingCrops = useMemo(() => {
-    if (!cropSearchQuery.trim()) return LIVE_COMMODITIES;
-    return LIVE_COMMODITIES.filter((c) => 
+    if (!cropSearchQuery.trim()) return commodities;
+    return commodities.filter((c) => 
       c.name.toLowerCase().includes(cropSearchQuery.toLowerCase()) ||
       c.category.toLowerCase().includes(cropSearchQuery.toLowerCase()) ||
       c.variety.toLowerCase().includes(cropSearchQuery.toLowerCase())
     );
-  }, [cropSearchQuery]);
+  }, [cropSearchQuery, commodities]);
 
   // Filtered & Sorted Overview Commodities
   const overviewCommodities = useMemo(() => {
-    let list = [...LIVE_COMMODITIES];
+    let list = [...commodities];
 
     // Search filter
     if (overviewSearch.trim()) {
@@ -150,13 +245,35 @@ export const LiveMarketSection: React.FC<LiveMarketSectionProps> = ({
     }
 
     return list;
-  }, [overviewSearch, overviewFilter, overviewSort]);
+  }, [overviewSearch, overviewFilter, overviewSort, commodities]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 600);
+    try {
+      const res = await fetch('/api/market/live-commodities?refresh=true');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.commodities && Array.isArray(data.commodities)) {
+          setCommodities(data.commodities);
+          setApiStatus({
+            configured: !!data.configured,
+            isRealTime: !!data.isRealTime,
+            source: data.source || 'calibrated_baseline',
+            syncTimestamp: data.syncTimestamp,
+            recordCount: data.recordCount,
+            message: data.message,
+            warning: data.warning || (!data.isRealTime ? data.message : undefined),
+            resourceId: data.resourceId,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to force refresh market feed:', err);
+    } finally {
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+    }
   };
 
   const handleSelectFromOverview = (id: string) => {
@@ -191,12 +308,29 @@ export const LiveMarketSection: React.FC<LiveMarketSectionProps> = ({
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase bg-emerald-900/80 text-emerald-200 border border-emerald-500/40">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Live Mandi Feed
-              </span>
+              {apiStatus.isRealTime ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Live data.gov.in (Agmarknet)
+                </span>
+              ) : apiStatus.configured ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase bg-amber-950/90 text-amber-300 border border-amber-500/50 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  data.gov.in Mandi Sync
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase bg-stone-900/80 text-amber-200 border border-amber-500/30 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  APMC Mandi Benchmarks
+                </span>
+              )}
+
               <span className="text-xs text-[#C2B7A3] font-mono">
-                Synced with e-NAM & APMC Hubs • Updated Just Now
+                {apiStatus.isRealTime 
+                  ? `${apiStatus.recordCount || 0} Mandi Records Synced • ${new Date(apiStatus.syncTimestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  : apiStatus.configured && apiStatus.warning
+                  ? apiStatus.warning
+                  : 'Add DATA_GOV_IN_API_KEY in Settings for Live data.gov.in Sync'}
               </span>
             </div>
 
@@ -206,10 +340,40 @@ export const LiveMarketSection: React.FC<LiveMarketSectionProps> = ({
             <p className="text-xs sm:text-sm text-[#D5CCBD] leading-relaxed">
               Real-time matched clearing prices, live buy/sell volume depth, and AI-predicted supply trends for transparent farmgate trade across India.
             </p>
+
+            {apiStatus.warning && (
+              <div className="mt-3 p-3 rounded-xl bg-amber-950/70 border border-amber-500/40 text-amber-200 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-amber-300">Live data.gov.in Feed Status</p>
+                    <button
+                      type="button"
+                      onClick={() => { setShowApiModal(true); setTestResult(null); }}
+                      className="underline font-bold text-amber-300 hover:text-white text-[11px]"
+                    >
+                      Open Setup Assistant &rarr;
+                    </button>
+                  </div>
+                  <p className="leading-relaxed text-amber-100/90">{apiStatus.warning}</p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Refresh and Quick Action */}
-          <div className="flex items-center gap-2 self-start md:self-center">
+          {/* Refresh, API Setup Guide, and Quick Action */}
+          <div className="flex items-center gap-2 self-start md:self-center flex-wrap">
+            <button
+              type="button"
+              id="open-api-setup-modal-btn"
+              onClick={() => { setShowApiModal(true); setTestResult(null); }}
+              className="p-2.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-400/30 transition flex items-center gap-2 text-xs font-semibold"
+              title="data.gov.in Live Mandi API Setup & Diagnostics"
+            >
+              <KeyRound className="w-4 h-4 text-amber-300" />
+              <span className="hidden sm:inline">API Setup Guide</span>
+            </button>
+
             <button
               type="button"
               id="refresh-live-market-btn"
@@ -354,7 +518,7 @@ export const LiveMarketSection: React.FC<LiveMarketSectionProps> = ({
             <span className="text-[11px] font-bold text-[#7A746B] uppercase tracking-wider whitespace-nowrap pl-1">
               Popular Crops:
             </span>
-            {LIVE_COMMODITIES.map((c) => {
+            {commodities.map((c) => {
               const isSelected = c.id === selectedCropId;
               return (
                 <button
@@ -881,7 +1045,7 @@ export const LiveMarketSection: React.FC<LiveMarketSectionProps> = ({
                     : 'bg-[#FAF9F6] text-[#6B655B] hover:bg-[#EAE6DF]'
                 }`}
               >
-                All ({LIVE_COMMODITIES.length})
+                All ({commodities.length})
               </button>
               <button
                 type="button"
@@ -1063,6 +1227,176 @@ export const LiveMarketSection: React.FC<LiveMarketSectionProps> = ({
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* data.gov.in Live Agmarknet Mandi Integration Modal */}
+      {/* ======================================================== */}
+      {showApiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-[#FAF9F6] w-full max-w-2xl rounded-3xl shadow-2xl border border-[#E8E5DF] overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="bg-[#233B2B] p-6 text-white flex items-start justify-between relative">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-amber-400/20 text-amber-300">
+                    <KeyRound className="w-4 h-4" />
+                  </span>
+                  <h2 className="text-lg sm:text-xl font-serif font-bold text-[#FAF9F6]">
+                    Agmarknet Mandi API Integration
+                  </h2>
+                </div>
+                <p className="text-xs text-[#D5CCBD]">
+                  Connect real-time agricultural mandi prices from the official Open Government Data (data.gov.in) portal.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowApiModal(false)}
+                className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6 overflow-y-auto">
+              
+              {/* Current Status Box */}
+              <div className="p-4 rounded-2xl bg-[#F4F1EA] border border-[#E8E5DF] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#7A746B] uppercase tracking-wider">Feed Status</span>
+                  {apiStatus.isRealTime ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Live Stream Active ({apiStatus.recordCount} Mandi Records)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
+                      Calibrated Baseline (Live Key Pending)
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-xs text-[#4A453E] space-y-1.5 font-mono bg-white p-3 rounded-xl border border-[#E8E5DF]">
+                  <p><strong className="text-[#1C1C1C]">API Key Status:</strong> {apiStatus.configured ? 'Detected in Settings/Secrets' : 'Missing in Settings/Secrets'}</p>
+                  <p><strong className="text-[#1C1C1C]">Active Resource ID:</strong> {apiStatus.resourceId || '9ef84268-d588-465a-a308-a864a43d0070'} (Agmarknet Daily Prices)</p>
+                  {apiStatus.warning && (
+                    <p className="text-amber-800 font-sans font-medium text-xs pt-1 border-t border-[#E8E5DF]">
+                      {apiStatus.warning}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* 4 Steps Guide */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-[#1C1C1C] flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[#233B2B] text-amber-300 text-xs flex items-center justify-center font-bold">✓</span>
+                  How to Get Your Free API Key from data.gov.in
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-white border border-[#E8E5DF] space-y-1.5 shadow-2xs">
+                    <div className="flex items-center gap-2 text-stone-900 font-bold">
+                      <span className="w-5 h-5 rounded-md bg-stone-100 flex items-center justify-center text-[11px]">1</span>
+                      <span>Register or Sign In</span>
+                    </div>
+                    <p className="text-[#6B655B] text-[11px] leading-relaxed">
+                      Visit <a href="https://data.gov.in" target="_blank" rel="noreferrer" className="text-emerald-700 underline font-semibold inline-flex items-center gap-0.5">data.gov.in <ExternalLink className="w-3 h-3" /></a> and sign in with your email.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-white border border-[#E8E5DF] space-y-1.5 shadow-2xs">
+                    <div className="flex items-center gap-2 text-stone-900 font-bold">
+                      <span className="w-5 h-5 rounded-md bg-stone-100 flex items-center justify-center text-[11px]">2</span>
+                      <span>Generate API Key</span>
+                    </div>
+                    <p className="text-[#6B655B] text-[11px] leading-relaxed">
+                      Click your profile icon &rarr; <strong>My Account</strong> &rarr; <strong>API Access</strong> &rarr; Click <strong>Generate API Key</strong>.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-white border border-[#E8E5DF] space-y-1.5 shadow-2xs">
+                    <div className="flex items-center gap-2 text-stone-900 font-bold">
+                      <span className="w-5 h-5 rounded-md bg-stone-100 flex items-center justify-center text-[11px]">3</span>
+                      <span>Copy Your Key Token</span>
+                    </div>
+                    <p className="text-[#6B655B] text-[11px] leading-relaxed">
+                      Copy the alphanumeric key token (e.g. <code className="bg-stone-100 px-1 py-0.5 rounded text-[10px] text-stone-700">579b464d...</code>). Do not include URL prefixes or resource paths.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-white border border-[#E8E5DF] space-y-1.5 shadow-2xs">
+                    <div className="flex items-center gap-2 text-stone-900 font-bold">
+                      <span className="w-5 h-5 rounded-md bg-stone-100 flex items-center justify-center text-[11px]">4</span>
+                      <span>Save in Project Settings</span>
+                    </div>
+                    <p className="text-[#6B655B] text-[11px] leading-relaxed">
+                      Open AI Studio <strong>Settings / Secrets</strong> (gear icon), set <code className="bg-stone-100 px-1 py-0.5 rounded text-[10px] text-stone-700">DATA_GOV_IN_API_KEY</code>, and save.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Connection Test Button and Output */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E8E5DF] space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-[#1C1C1C]">Test Live Server Connection</h4>
+                    <p className="text-[11px] text-[#7A746B]">
+                      Queries Agmarknet servers via data.gov.in using your current configuration.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleTestConnection}
+                    disabled={isTestingApi}
+                    className="px-4 py-2 rounded-xl bg-[#233B2B] hover:bg-[#2e4d39] text-amber-200 text-xs font-bold transition flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isTestingApi ? 'animate-spin' : ''}`} />
+                    <span>{isTestingApi ? 'Testing Connection...' : 'Test Connection Now'}</span>
+                  </button>
+                </div>
+
+                {testResult && (
+                  <div className={`p-3 rounded-xl text-xs font-medium border flex items-start gap-2 ${
+                    testResult.success 
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                      : 'bg-amber-50 border-amber-200 text-amber-800'
+                  }`}>
+                    {testResult.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    )}
+                    <span className="leading-relaxed">{testResult.message}</span>
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-[#F4F1EA] border-t border-[#E8E5DF] flex items-center justify-between">
+              <span className="text-[11px] text-[#7A746B]">
+                Need help? data.gov.in provides 1,000 free queries per day for registered developers.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowApiModal(false)}
+                className="px-5 py-2 rounded-xl bg-[#233B2B] text-white text-xs font-bold hover:bg-[#2d4b37] transition"
+              >
+                Done
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
 

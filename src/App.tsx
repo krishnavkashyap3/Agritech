@@ -22,6 +22,7 @@ import { CreateListingModal } from './components/CreateListingModal';
 import { CreateRfqModal } from './components/CreateRfqModal';
 import { OrderTrackingModal } from './components/OrderTrackingModal';
 import { ComplaintModal } from './components/ComplaintModal';
+import { ComplaintSystem } from './components/ComplaintSystem';
 import { 
   Sprout, 
   ShieldCheck, 
@@ -34,7 +35,8 @@ import {
   Headphones, 
   FileCheck,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Lock
 } from 'lucide-react';
 
 export default function App() {
@@ -48,7 +50,11 @@ export default function App() {
     saveComplaintToFirestore,
     firestoreComplaints
   } = useAuth();
-  const [activeTab, setActiveTab] = useState<'marketplace' | 'live-market' | 'buying' | 'advisor' | 'dashboard'>('marketplace');
+  const [activeTab, setActiveTab] = useState<'marketplace' | 'live-market' | 'buying' | 'advisor' | 'dashboard' | 'admin-panel'>('marketplace');
+  const isAdminUser = Boolean(
+    firebaseUser?.email?.toLowerCase() === 'aryan@gmail.com' ||
+    currentUser?.email?.toLowerCase() === 'aryan@gmail.com'
+  );
   const [marketplaceSearchTerm, setMarketplaceSearchTerm] = useState<string>('');
   const [initialLiveMarketCrop, setInitialLiveMarketCrop] = useState<string>('onion');
   
@@ -363,6 +369,38 @@ export default function App() {
               onSelectTab={setActiveTab}
             />
           )
+        )}
+
+        {/* Admin Panel Tab - Exclusively available to aryan@gmail.com */}
+        {activeTab === 'admin-panel' && (
+          <div className="py-2">
+            {!isAdminUser ? (
+              <div className="bg-white rounded-3xl p-8 sm:p-12 border border-[#E8E5DF] shadow-xs text-center max-w-xl mx-auto space-y-5 my-8">
+                <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-center mx-auto border border-rose-200">
+                  <Lock className="w-8 h-8 text-rose-600" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-serif font-bold text-[#1C1C1C]">
+                    Restricted Administrative Console
+                  </h2>
+                  <p className="text-xs text-[#7A746B] max-w-md mx-auto leading-relaxed">
+                    This admin panel contains all user complaints and is strictly restricted to the authorized administrator (<strong className="font-mono text-emerald-800">aryan@gmail.com</strong>). User complaints cannot be accessed by any other user.
+                  </p>
+                </div>
+                <div className="pt-2 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('marketplace')}
+                    className="py-2.5 px-6 bg-[#233B2B] text-white font-semibold rounded-xl text-xs transition hover:bg-[#1B2F22]"
+                  >
+                    Return to Marketplace
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <ComplaintSystem />
+            )}
+          </div>
         )}
       </main>
 

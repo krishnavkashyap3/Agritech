@@ -16,12 +16,13 @@ import {
   LogIn,
   LogOut,
   ShieldCheck,
-  TrendingUp
+  TrendingUp,
+  ShieldAlert
 } from 'lucide-react';
 
 interface NavbarProps {
-  activeTab: 'marketplace' | 'live-market' | 'buying' | 'advisor' | 'dashboard';
-  onSelectTab: (tab: 'marketplace' | 'live-market' | 'buying' | 'advisor' | 'dashboard') => void;
+  activeTab: 'marketplace' | 'live-market' | 'buying' | 'advisor' | 'dashboard' | 'admin-panel';
+  onSelectTab: (tab: 'marketplace' | 'live-market' | 'buying' | 'advisor' | 'dashboard' | 'admin-panel') => void;
   currentUser: UserProfile;
   onOpenAuthModal: () => void;
   onOpenCreateListing: () => void;
@@ -41,6 +42,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   const isUserLoggedIn = Boolean((firebaseUser || isAuthenticated) && currentUser.id && currentUser.name);
+  const isAdmin = Boolean(
+    firebaseUser?.email?.toLowerCase() === 'aryan@gmail.com' ||
+    currentUser.email?.toLowerCase() === 'aryan@gmail.com'
+  );
 
   return (
     <header className="sticky top-0 z-40 bg-[#FAF9F6] border-b border-[#E8E5DF] shadow-xs">
@@ -155,6 +160,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
                 <span>My Dashboard</span>
               </button>
+
+              {/* Admin Panel Link - Exclusively visible to aryan@gmail.com */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  id="nav-tab-admin-panel"
+                  onClick={() => onSelectTab('admin-panel')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+                    activeTab === 'admin-panel'
+                      ? 'bg-[#233B2B] text-amber-300 shadow-xs font-bold border border-amber-400/40'
+                      : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 font-bold'
+                  }`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Admin Panel</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                </button>
+              )}
             </nav>
           </div>
 
@@ -239,6 +262,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                       >
                         Trade Dashboard & Orders
                       </button>
+
+                      {/* Admin Panel entry in profile dropdown */}
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSelectTab('admin-panel');
+                            setProfileDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 flex items-center justify-between transition border border-amber-200"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+                            <span>Admin Complaints Console</span>
+                          </span>
+                          <span className="text-[9px] font-mono bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded font-bold">
+                            RESTRICTED
+                          </span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => {
@@ -354,6 +398,24 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             My Dashboard ({currentUser.role})
           </button>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => { onSelectTab('admin-panel'); setMobileMenuOpen(false); }}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between ${
+                activeTab === 'admin-panel' ? 'bg-[#233B2B] text-amber-300' : 'bg-amber-50 text-amber-900 border border-amber-200'
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                <span>Admin Complaints Panel</span>
+              </span>
+              <span className="text-[10px] font-mono bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded font-bold">
+                aryan
+              </span>
+            </button>
+          )}
 
           <div className="pt-2 border-t border-[#E8E5DF] flex flex-col gap-2">
             {firebaseUser ? (

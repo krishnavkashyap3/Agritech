@@ -14,8 +14,11 @@ import {
   Tag, 
   Sparkles,
   Search,
-  ExternalLink
+  ExternalLink,
+  Lock
 } from 'lucide-react';
+import { ComplaintSystem } from './ComplaintSystem';
+import { useAuth } from '../context/AuthContext';
 
 interface ComplaintModalProps {
   isOpen: boolean;
@@ -34,7 +37,13 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
   onRegisterComplaint,
   complaintsList,
 }) => {
-  const [activeTab, setActiveTab] = useState<'new' | 'track'>('new');
+  const { firebaseUser } = useAuth();
+  const isAdmin = Boolean(
+    firebaseUser?.email?.toLowerCase() === 'aryan@gmail.com' ||
+    currentUser?.email?.toLowerCase() === 'aryan@gmail.com'
+  );
+
+  const [activeTab, setActiveTab] = useState<'new' | 'track' | 'admin-portal'>('new');
   const [name, setName] = useState(currentUser?.name || '');
   const [contact, setContact] = useState(currentUser?.phone || currentUser?.email || '');
   const [category, setCategory] = useState<UserComplaint['issueCategory']>('Payment & Escrow');
@@ -145,6 +154,20 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
                   {complaintsList.length}
                 </span>
               </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('admin-portal')}
+                  className={`px-3 py-1 rounded-lg font-medium transition flex items-center gap-1.5 ${
+                    activeTab === 'admin-portal'
+                      ? 'bg-amber-300 text-[#233B2B] font-bold'
+                      : 'text-[#D0C8BB] hover:text-white'
+                  }`}
+                >
+                  <Lock className="w-3 h-3 text-amber-400" />
+                  <span>Admin Portal</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -362,7 +385,7 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
                 </div>
               </form>
             )
-          ) : (
+          ) : activeTab === 'track' ? (
             /* Track Tickets List */
             <div className="space-y-4">
               <div className="flex items-center gap-2">
@@ -452,6 +475,10 @@ export const ComplaintModal: React.FC<ComplaintModalProps> = ({
                   ))}
                 </div>
               )}
+            </div>
+          ) : (
+            <div className="py-2">
+              <ComplaintSystem />
             </div>
           )}
         </div>

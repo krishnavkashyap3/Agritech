@@ -3,6 +3,12 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import { 
+  fetchLiveMarketData, 
+  getDataGovApiKey, 
+  checkDataGovKeyStatus,
+  PRIMARY_AGMARKNET_RESOURCE_ID 
+} from './server/dataGovService';
 
 dotenv.config();
 
@@ -781,6 +787,44 @@ Respond strictly in JSON format matching the schema.`;
   } catch (error: any) {
     console.warn('[Gemini API] Ask advisor fallback:', error?.message || error);
     return res.json(getDynamicAdvisorDoubtFallback(cleanQuestion, farmContext));
+  }
+});
+
+// ==========================================
+// data.gov.in Real-Time Mandi Market Routes
+// ==========================================
+
+// Check data.gov.in API status and configuration
+app.get('/api/market/api-status', (req, res) => {
+  const apiKey = getDataGovApiKey();
+  const keyStatus = checkDataGovKeyStatus();
+  return res.json({
+    success: true,
+    configured: !!apiKey,
+    isLikelyResourceId: keyStatus.isLikelyResourceId,
+    resourceId: keyStatus.detectedResourceId || PRIMARY_AGMARKNET_RESOURCE_ID,
+    source: apiKey && !keyStatus.isLikelyResourceId ? 'data.gov.in' : 'calibrated_baseline',
+    message: !apiKey 
+      ? 'DATA_GOV_IN_API_KEY is not set in Settings/Secrets. Serving calibrated APMC rates.'
+      : keyStatus.isLikelyResourceId
+      ? 'Notice: The current value in DATA_GOV_IN_API_KEY is a dataset Resource ID (/resource/9ef84268...), not your account API Key. Please obtain your API Key from data.gov.in (My Account -> API Access).'
+      : 'data.gov.in API key is configured. Real-time Agmarknet mandi synchronization is active.'
+  });
+});
+
+// Real-time live commodities and APMC Mandi rates from data.gov.in
+app.get('/api/market/live-commodities', async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === 'true';
+    const result = await fetchLiveMarketData({ forceRefresh });
+    return res.json(result);
+  } catch (error: any) {
+    console.error('[Market API] Error fetching live commodities:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve live market data',
+      details: error?.message || String(error)
+    });
   }
 });
 
