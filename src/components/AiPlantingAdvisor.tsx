@@ -101,32 +101,67 @@ export const AiPlantingAdvisor: React.FC<AiPlantingAdvisorProps> = ({
     }
     if (isAskingDoubtRef.current) return;
 
-    const query = (customQuestion || doubtQuestion).trim();
-    if (!query) return;
+    const rawQuery = (customQuestion || doubtQuestion).trim();
+    // If empty, auto-generate a comprehensive farm-specific query so the user is never blocked
+    const query = rawQuery || `What are the top agronomic best practices, pest prevention tips, and profit-maximizing crop varieties for my ${acreage || 50}-acre farm in ${region || 'India'} with ${soilType || 'black loam soil'}?`;
+
+    if (!rawQuery) {
+      setDoubtQuestion(query);
+    }
 
     isAskingDoubtRef.current = true;
     setIsAskingDoubt(true);
     setDoubtError(null);
 
+    // Timeout safety guard so button never gets stuck in loading state
+    const timeoutId = setTimeout(() => {
+      if (isAskingDoubtRef.current) {
+        isAskingDoubtRef.current = false;
+        setIsAskingDoubt(false);
+      }
+    }, 25000);
+
     try {
-      const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
-      
       let answerText = '';
       let keyTakeaways: string[] = [];
       let recommendedPractices: string[] = [];
       let marketInsight = '';
-      let modelUsed = 'gemini-1.5-flash';
+      let modelUsed = 'gemini-3.1-flash-lite';
 
-      if (apiKey) {
-        try {
-          // Initialize Google Generative AI directly on the client side
-          const genAI = new GoogleGenerativeAI(apiKey);
-          // Try modern active models (gemini-3.1-flash-lite, gemini-flash-latest, gemini-3.7-flash)
-          const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.7-flash'];
-          let clientResult: any = null;
-          let chosenModel = 'gemini-3.1-flash-lite';
+      // 1. Primary: Query the server-side proxy endpoint first (fast, secure, has access to GEMINI_API_KEY)
+      try {
+        const res = await fetch('/api/ai/ask-advisor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: query,
+            farmContext: { acreage, soilType, region, waterSource, targetSeason },
+            history: doubtHistory.map(d => ({ role: 'user', text: d.question })),
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.answer) {
+            answerText = data.answer;
+            keyTakeaways = Array.isArray(data.keyTakeaways) ? data.keyTakeaways : [];
+            recommendedPractices = Array.isArray(data.recommendedPractices) ? data.recommendedPractices : [];
+            marketInsight = data.marketInsight || '';
+            modelUsed = data.modelUsed || 'gemini-3.1-flash-lite';
+          }
+        }
+      } catch (serverErr) {
+        console.warn('Server endpoint unavailable, checking client-side Gemini fallback:', serverErr);
+      }
 
-          const prompt = `You are KrishiQuant's Chief Agronomist and Agricultural Market Advisor, helping Indian farmers (Kisans), FPOs, and agribusiness entrepreneurs make optimal, profitable, and scientifically sound farming and marketing decisions.
+      // 2. Secondary: Direct client-side Gemini call if server was unreachable
+      if (!answerText) {
+        const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+        if (apiKey) {
+          try {
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.7-flash'];
+
+            const prompt = `You are KrishiQuant's Chief Agronomist and Agricultural Market Advisor, helping Indian farmers (Kisans), FPOs, and agribusiness entrepreneurs make optimal, profitable, and scientifically sound farming and marketing decisions.
 
 Farmer / Farm Context:
 - Holding Acreage: ${acreage || 50} acres
@@ -153,76 +188,45 @@ Respond strictly in valid JSON format with this structure:
   "marketInsight": "Note on how this decision impacts profit margins, procurement demand, or MSP price in INR."
 }`;
 
-          for (const cand of candidateModels) {
-            try {
-              const model = genAI.getGenerativeModel({
-                model: cand,
-                generationConfig: {
-                  responseMimeType: 'application/json',
-                },
-              });
-              clientResult = await model.generateContent(prompt);
-              if (clientResult && clientResult.response) {
-                chosenModel = cand;
-                break;
+            for (const cand of candidateModels) {
+              try {
+                const model = genAI.getGenerativeModel({
+                  model: cand,
+                  generationConfig: {
+                    responseMimeType: 'application/json',
+                  },
+                });
+                const clientResult = await model.generateContent(prompt);
+                if (clientResult && clientResult.response) {
+                  const rawText = clientResult.response.text().trim();
+                  let parsed: any = null;
+                  try {
+                    const cleaned = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+                    parsed = JSON.parse(cleaned);
+                  } catch {
+                    parsed = { answer: rawText };
+                  }
+
+                  if (parsed && (parsed.answer || typeof parsed === 'string')) {
+                    answerText = typeof parsed === 'string' ? parsed : (parsed.answer || rawText);
+                    keyTakeaways = Array.isArray(parsed.keyTakeaways) ? parsed.keyTakeaways : [];
+                    recommendedPractices = Array.isArray(parsed.recommendedPractices) ? parsed.recommendedPractices : [];
+                    marketInsight = parsed.marketInsight || '';
+                    modelUsed = cand;
+                    break;
+                  }
+                }
+              } catch {
+                continue;
               }
-            } catch (err) {
-              // Try next available model in candidate list
-              continue;
             }
+          } catch (clientErr) {
+            console.warn('Client-side Gemini execution failed:', clientErr);
           }
-
-          if (clientResult && clientResult.response) {
-            const rawText = clientResult.response.text().trim();
-            let parsed: any = null;
-            try {
-              const cleaned = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
-              parsed = JSON.parse(cleaned);
-            } catch {
-              parsed = { answer: rawText };
-            }
-
-            if (parsed && (parsed.answer || typeof parsed === 'string')) {
-              answerText = typeof parsed === 'string' ? parsed : (parsed.answer || rawText);
-              keyTakeaways = Array.isArray(parsed.keyTakeaways) ? parsed.keyTakeaways : [];
-              recommendedPractices = Array.isArray(parsed.recommendedPractices) ? parsed.recommendedPractices : [];
-              marketInsight = parsed.marketInsight || '';
-              modelUsed = chosenModel;
-            }
-          }
-        } catch {
-          // Client-side fallback gracefully defers to backend proxy
         }
       }
 
-      // If client-side didn't produce an answer, try server-side endpoint as fallback
-      if (!answerText) {
-        try {
-          const res = await fetch('/api/ai/ask-advisor', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              question: query,
-              farmContext: { acreage, soilType, region, waterSource, targetSeason },
-              history: doubtHistory.map(d => ({ role: 'user', text: d.question })),
-            }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.answer) {
-              answerText = data.answer;
-              keyTakeaways = Array.isArray(data.keyTakeaways) ? data.keyTakeaways : [];
-              recommendedPractices = Array.isArray(data.recommendedPractices) ? data.recommendedPractices : [];
-              marketInsight = data.marketInsight || '';
-              modelUsed = data.modelUsed || 'gemini-3.1-flash-lite';
-            }
-          }
-        } catch (serverErr) {
-          console.warn('Server endpoint unavailable (e.g. static Vercel host), falling back to agronomy engine:', serverErr);
-        }
-      }
-
-      // If neither was available, use intelligent agro-economic context engine
+      // 3. Tertiary: Intelligent agronomic context engine if network is completely offline
       if (!answerText) {
         answerText = `Regarding "${query}": For your ${acreage}-acre holding with ${soilType} in ${region}, ensure alignment with ICAR-recommended package of practices. Focus on certified seed treatment, balanced basal nutrition (DAP/MOP), split urea applications to prevent lodging, and adhering to AGMARK moisture limits (<12%) to secure top-tier procurement pricing on KrishiQuant.`;
         keyTakeaways = [
@@ -262,6 +266,7 @@ Respond strictly in valid JSON format with this structure:
       console.error('Gemini execution error:', err);
       setDoubtError(err?.message || 'Error consulting AI Agronomist. Please try again.');
     } finally {
+      clearTimeout(timeoutId);
       isAskingDoubtRef.current = false;
       setIsAskingDoubt(false);
     }
@@ -598,12 +603,12 @@ Respond strictly in valid JSON format with this structure:
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (!isAskingDoubt && !isAskingDoubtRef.current && doubtQuestion.trim()) {
+                    if (!isAskingDoubt && !isAskingDoubtRef.current) {
                       handleAskDoubt();
                     }
                   }
                 }}
-                placeholder="Type your crop or market doubt here... (e.g., 'What is the exact fertilizer dosage per acre for Kabuli Chana in Maharashtra black soil?' or 'How will delayed monsoon impact Rabi sowing?')"
+                placeholder="Type your crop or market doubt here... (e.g., 'What is the exact fertilizer dosage per acre for Kabuli Chana in Maharashtra black soil?' or click 'Ask AI Agronomist' directly for instant tailored advice)"
                 className="w-full p-3.5 sm:p-4 text-xs sm:text-sm bg-[#FAF9F6] border border-[#D5CCBD] rounded-xl text-[#1C1C1C] placeholder:text-[#8A847A] focus:ring-2 focus:ring-[#2D4F38] focus:border-[#2D4F38] focus:outline-none transition resize-none font-sans"
               />
             </div>
@@ -629,8 +634,8 @@ Respond strictly in valid JSON format with this structure:
                 <button
                   type="submit"
                   id="submit-doubt-btn"
-                  disabled={isAskingDoubt || !doubtQuestion.trim()}
-                  className="px-5 py-2.5 bg-[#2D4F38] hover:bg-[#1E3727] text-white font-semibold rounded-xl text-xs sm:text-sm transition flex items-center gap-2 shadow-xs border border-[#3E654B] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  disabled={isAskingDoubt}
+                  className="px-5 py-2.5 bg-[#2D4F38] hover:bg-[#1E3727] text-white font-semibold rounded-xl text-xs sm:text-sm transition flex items-center gap-2 shadow-xs border border-[#3E654B] cursor-pointer active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait"
                 >
                   {isAskingDoubt ? (
                     <>
